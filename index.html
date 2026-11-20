@@ -176,7 +176,7 @@ button, summary, select, .options label { cursor: pointer; }
   margin: 0 0 clamp(12px, 1.12vw, 16px);
 }
 
-.filter, .sort-field, .meet-picker, .athlete-lookup {
+.filter, .sort-field, .class-metric-field, .meet-picker, .athlete-lookup {
   position: relative;
   min-width: 0;
   margin: 0;
@@ -185,7 +185,7 @@ button, summary, select, .options label { cursor: pointer; }
   border: 1px solid var(--line);
 }
 
-.filter summary, .sort-field, .meet-picker {
+.filter summary, .sort-field, .class-metric-field, .meet-picker {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -196,7 +196,7 @@ button, summary, select, .options label { cursor: pointer; }
 
 .filter summary { list-style: none; }
 .filter summary::-webkit-details-marker { display: none; }
-.filter summary::after, .sort-field::after, .meet-picker::after {
+.filter summary::after, .sort-field::after, .class-metric-field::after, .meet-picker::after {
   content: "";
   position: absolute;
   right: 15px;
@@ -212,11 +212,15 @@ button, summary, select, .options label { cursor: pointer; }
 .filter[open] { z-index: 4; border-color: var(--accent); }
 .filter[open] summary::after { transform: rotate(225deg); margin-top: 3px; }
 .filter summary:hover, .sort-field:focus-within, .meet-picker:focus-within { background: var(--group); }
+.class-metric-field[hidden] { display: none; }
+.sort-field:has(+ .class-metric-field:not([hidden])), .class-metric-field { padding-inline: 9px 20px; }
+.sort-field:has(+ .class-metric-field:not([hidden]))::after, .class-metric-field::after { right: 8px; }
+.class-metric-field { background: var(--group); border-inline-start: 3px solid var(--accent); }
 .field-name { color: var(--muted); font-size: 12px; line-height: 1.15; }
 .field-name small { font-size: .85em; }
-.selection, .sort-field select, .meet-picker select { font-size: 16px; line-height: 1.25; }
+.selection, .sort-field select, .class-metric-field select, .meet-picker select { font-size: 16px; line-height: 1.25; }
 .selection { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sort-field select, .meet-picker select {
+.sort-field select, .class-metric-field select, .meet-picker select {
   appearance: none;
   border: 0;
   border-radius: 0;
@@ -226,7 +230,7 @@ button, summary, select, .options label { cursor: pointer; }
   color: var(--text);
   background: transparent;
 }
-.sort-field option, .meet-picker option, .meet-picker optgroup { color: var(--text); background: var(--header); }
+.sort-field option, .class-metric-field option, .meet-picker option, .meet-picker optgroup { color: var(--text); background: var(--header); }
 .meet-picker select { overflow: hidden; text-overflow: ellipsis; }
 
 .athlete-lookup {
@@ -397,12 +401,6 @@ button, summary, select, .options label { cursor: pointer; }
   padding-right: 6px;
   font-weight: 700;
 }
-.ranking td.rank .medal {
-  display: inline-block;
-  margin-inline-end: .18em;
-  font-size: .88em;
-  vertical-align: baseline;
-}
 .ranking .result > td.primary {
   background: var(--highlight) padding-box;
   font-size: 1.11em;
@@ -532,10 +530,25 @@ html[lang="en"] .sheet footer p[lang="en"] { margin-top: 0; }
 html[lang="en"] .masthead h1, html[lang="en"] .masthead h2,
 html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: var(--sans); }
 
+@media (min-width: 1120px) {
+  #ranking-view .filters:has(.class-metric-field:not([hidden])) {
+    grid-template-columns: minmax(150px, 1.35fr) minmax(145px, 1.22fr) repeat(4, minmax(0, 1fr)) minmax(150px, 1.2fr) minmax(126px, 1fr);
+  }
+}
+@media (min-width: 801px) {
+  .meet-filters:has(.class-metric-field:not([hidden])) {
+    grid-template-columns: minmax(150px, 1.25fr) repeat(3, minmax(0, 1fr)) minmax(150px, 1fr) minmax(126px, 1fr);
+  }
+}
 @media (min-width: 801px) and (max-width: 1119px) {
   #ranking-view .filters { grid-template-columns: repeat(10, minmax(0, 1fr)); }
   #ranking-view .athlete-lookup, #ranking-view .meet-picker { grid-column: span 5; }
   #ranking-view .filter, #ranking-view .sort-field { grid-column: span 2; }
+  #ranking-view .filters:has(.class-metric-field:not([hidden])) {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(150px, 1.2fr) minmax(136px, 1fr);
+  }
+  #ranking-view .filters:has(.class-metric-field:not([hidden])) :is(.athlete-lookup, .meet-picker) { grid-column: span 3; }
+  #ranking-view .filters:has(.class-metric-field:not([hidden])) :is(.filter, .sort-field) { grid-column: auto; }
 }
 
 @media (max-width: 995px) {
@@ -559,6 +572,9 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
   .athlete-lookup { grid-column: 1 / -1; }
   #ranking-view .meet-picker { grid-column: 1 / -1; }
   .sort-field { grid-column: 1 / -1; }
+  .sort-field:has(+ .class-metric-field:not([hidden])) { grid-column: 1; }
+  .class-metric-field { grid-column: 2; }
+  .meet-filters:has(.class-metric-field:not([hidden])) .filter[data-key="divisions"] { grid-column: 1 / -1; }
 }
 
 @media (max-width: 530px) {
@@ -580,9 +596,9 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
   .mast-mode { grid-column: 1; grid-row: 2; margin: 0; text-align: left; }
   .mast-mode h2 { font-size: 15px; }
   .mast-mode p { font-size: 9px; }
-  .filter summary, .sort-field, .meet-picker { min-height: 51px; padding-left: 10px; }
+  .filter summary, .sort-field, .class-metric-field, .meet-picker { min-height: 51px; padding-left: 10px; }
   .field-name { font-size: 11px; }
-  .selection, .sort-field select, .meet-picker select { font-size: 15px; }
+  .selection, .sort-field select, .class-metric-field select, .meet-picker select { font-size: 15px; }
   .options label { min-height: 42px; }
   .section-bar { min-height: 35px; }
   .section-bar small { font-size: 11px; }
@@ -664,12 +680,20 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
         <details class="filter" data-key="classes"><summary><span class="field-name"><span data-i18n-en="Weight class (kg)">级别</span> <small lang="en">CLASS / kg</small></span><span class="selection" data-i18n-en="All classes">全部级别</span></summary><div class="options" role="group" aria-label="级别" data-i18n-en-aria-label="Weight class"></div></details>
         <details class="filter" data-key="meetTypes"><summary><span class="field-name"><span data-i18n-en="Meet type">赛事类型</span> <small lang="en">MEET TYPE</small></span><span class="selection" data-i18n-en="All meet types">全部赛事</span></summary><div class="options" role="group" aria-label="赛事" data-i18n-en-aria-label="Meet type"></div></details>
         <label class="sort-field"><span class="field-name"><span data-i18n-en="Rank by">排名依据</span> <small lang="en">RANK BY</small></span>
-          <select id="sort" name="sort">
+          <select id="sort" aria-controls="class-metric" name="sort">
             <option value="gl" data-i18n-en="IPF GL points">GL系数</option>
-            <option value="totalOverall" data-i18n-en="Total">总成绩</option>
-            <option value="total" data-i18n-en="Total by weight class">总成绩（分级别）</option>
+            <option value="total" data-i18n-en="By weight class">级别成绩</option>
             <option value="squat" data-i18n-en="Squat">蹲举</option>
-            <option value="bench" data-i18n-en="Bench press">卧推举</option>
+            <option value="bench" data-i18n-en="Bench Press">卧推举</option>
+            <option value="deadlift" data-i18n-en="Deadlift">硬举</option>
+          </select>
+        </label>
+        <label class="class-metric-field" for="class-metric" hidden>
+          <span class="field-name"><span data-i18n-en="Within class">级别内项目</span> <small lang="en">METRIC</small></span>
+          <select id="class-metric" name="class-metric">
+            <option value="total" data-i18n-en="Total">总成绩</option>
+            <option value="squat" data-i18n-en="Squat">蹲举</option>
+            <option value="bench" data-i18n-en="Bench Press">卧推举</option>
             <option value="deadlift" data-i18n-en="Deadlift">硬举</option>
           </select>
         </label>
@@ -697,12 +721,20 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
         <details class="filter" data-key="classes"><summary><span class="field-name"><span data-i18n-en="Weight class (kg)">级别</span> <small lang="en">CLASS / kg</small></span><span class="selection" data-i18n-en="All classes">全部级别</span></summary><div class="options" role="group" aria-label="级别" data-i18n-en-aria-label="Weight class"></div></details>
         <details class="filter" data-key="divisions"><summary><span class="field-name"><span data-i18n-en="Age division">年龄组</span> <small lang="en">DIVISION</small></span><span class="selection" data-i18n-en="All divisions">全部年龄组</span></summary><div class="options" role="group" aria-label="年龄组" data-i18n-en-aria-label="Age division"></div></details>
         <label class="sort-field"><span class="field-name"><span data-i18n-en="Rank by">排名依据</span> <small lang="en">RANK BY</small></span>
-          <select id="meet-sort">
+          <select id="meet-sort" aria-controls="meet-class-metric">
             <option value="gl" data-i18n-en="IPF GL points">GL系数</option>
-            <option value="totalOverall" data-i18n-en="Total">总成绩</option>
-            <option value="total" data-i18n-en="Total by weight class">总成绩（分级别）</option>
+            <option value="total" data-i18n-en="By weight class">级别成绩</option>
             <option value="squat" data-i18n-en="Squat">蹲举</option>
-            <option value="bench" data-i18n-en="Bench press">卧推举</option>
+            <option value="bench" data-i18n-en="Bench Press">卧推举</option>
+            <option value="deadlift" data-i18n-en="Deadlift">硬举</option>
+          </select>
+        </label>
+        <label class="class-metric-field" for="meet-class-metric" hidden>
+          <span class="field-name"><span data-i18n-en="Within class">级别内项目</span> <small lang="en">METRIC</small></span>
+          <select id="meet-class-metric" name="meet-class-metric">
+            <option value="total" data-i18n-en="Total">总成绩</option>
+            <option value="squat" data-i18n-en="Squat">蹲举</option>
+            <option value="bench" data-i18n-en="Bench Press">卧推举</option>
             <option value="deadlift" data-i18n-en="Deadlift">硬举</option>
           </select>
         </label>
@@ -736,9 +768,15 @@ function numericClass(weightClass) {
 }
 
 const singleLifts = ['squat', 'bench', 'deadlift'];
+const classSortByMetric = Object.freeze({total: 'total', squat: 'classSquat', bench: 'classBench', deadlift: 'classDeadlift'});
+const metricByClassSort = new Map(Object.entries(classSortByMetric).map(([metric, sort]) => [sort, metric]));
+
+function isClassSort(sort) {
+  return metricByClassSort.has(sort);
+}
 
 function rankingMetric(sort) {
-  return sort === 'gl' || singleLifts.includes(sort) ? sort : 'total';
+  return metricByClassSort.get(sort) || (sort === 'gl' || singleLifts.includes(sort) ? sort : 'total');
 }
 
 function bestPerformance(a, b, metric) {
@@ -758,12 +796,32 @@ function displayOrder(a, b, metric) {
   return a.name_sort < b.name_sort ? -1 : 1;
 }
 
+function assignRanks(records, metric, assign) {
+  const sorted = [...records].sort((a, b) => displayOrder(a, b, metric));
+  const totalsWithoutWeighIn = metric === 'total'
+    ? new Set(sorted.filter(row => row.bodyweight == null).map(row => row.total)) : null;
+  let rank = 0;
+  sorted.forEach((row, index) => {
+    if (row[metric] == null) {
+      assign(row, null);
+      return;
+    }
+    const previous = sorted[index - 1];
+    const tied = previous && row[metric] === previous[metric] && (metric === 'gl' ||
+      (row.bodyweight ?? null) === (previous.bodyweight ?? null) ||
+      (metric === 'total' && totalsWithoutWeighIn.has(row.total)));
+    if (!tied) rank = index + 1;
+    assign(row, rank);
+  });
+}
+
 function rankResults(records, filters) {
   const metric = rankingMetric(filters.sort);
+  const byClass = isClassSort(filters.sort);
   const groups = new Map();
   for (const row of records) {
     if (!matchesFilters(row, filters)) continue;
-    const weightClass = filters.sort === 'total' ? row.weight_class : null;
+    const weightClass = byClass ? row.weight_class : null;
     const groupKey = `${row.gender}/${weightClass || ''}`;
     if (!groups.has(groupKey)) groups.set(groupKey, {gender: row.gender, weightClass, athletes: new Map()});
     const athletes = groups.get(groupKey).athletes;
@@ -775,23 +833,43 @@ function rankResults(records, filters) {
     return a.weightClass ? numericClass(a.weightClass) - numericClass(b.weightClass) : 0;
   });
   return ordered.map(({gender, weightClass, athletes}) => {
-    const sorted = [...athletes.values()].sort((a, b) => displayOrder(a, b, metric));
-    const totalsWithoutWeighIn = new Set(sorted.filter(row => row.bodyweight == null).map(row => row.total));
-    let rank = 0;
-    const rows = sorted.map((row, index) => {
-      const prev = sorted[index - 1];
-      if (row[metric] == null) return {...row, rank: null};
-      const tied = prev && row[metric] === prev[metric] && (metric === 'gl' ||
-        (row.bodyweight ?? null) === (prev.bodyweight ?? null) ||
-        (metric === 'total' && totalsWithoutWeighIn.has(row.total)));
-      if (!tied) rank = index + 1;
-      return {...row, rank};
-    });
+    const rows = [];
+    assignRanks(athletes.values(), metric, (row, rank) => rows.push({...row, rank}));
     return {gender, weightClass, rows};
   });
 }
 
+function liftPlacings(records, metric) {
+  metric = rankingMetric(metric);
+  const places = new Map();
+  if (!singleLifts.includes(metric)) return places;
+  const groups = new Map();
+  for (const row of records) {
+    const registrations = row.class_places?.length ? row.class_places
+      : [{division: row.division || row.age_division, place: row.class_place}];
+    const entries = [];
+    places.set(row.record_id, entries);
+    for (const registration of registrations) {
+      const entry = {division: registration.division, place: null};
+      entries.push(entry);
+      if (row.place_basis === 'guest' || !entry.division || !(Number(registration.place) > 0)) continue;
+      const actualClass = row.placement_weight_class || row.weight_class;
+      const key = JSON.stringify([row.meet_id, row.gender, actualClass, entry.division]);
+      if (!groups.has(key)) groups.set(key, new Map());
+      groups.get(key).set(row, entry);
+    }
+  }
+  for (const members of groups.values()) {
+    assignRanks(members.keys(), metric, (row, rank) => { members.get(row).place = rank; });
+  }
+  return places;
+}
+
 globalThis.rankResults = rankResults;
+globalThis.classSortByMetric = classSortByMetric;
+globalThis.isClassSort = isClassSort;
+globalThis.rankingMetric = rankingMetric;
+globalThis.liftPlacings = liftPlacings;
 </script>
   <script>'use strict';
 
@@ -826,7 +904,6 @@ globalThis.rankResults = rankResults;
   // Only a manual gender choice narrows the options in the weight-class menu.
   const sections = document.getElementById('rankings');
   const form = document.querySelector('.filters');
-  const sortField = document.getElementById('sort');
   const rankingView = document.getElementById('ranking-view');
   const athleteView = document.getElementById('athlete-view');
   const archiveRecords = document.getElementById('athlete-records');
@@ -992,11 +1069,18 @@ globalThis.rankResults = rankResults;
   const historyColumns = ['meet_name', 'class_place', 'weight_class', 'bodyweight', 'squat', 'bench', 'deadlift', 'total', 'gl'];
   const medals = ['', '🥇', '🥈', '🥉'];
   const modeTitles = {
-    gl: ['GL系数总排名', 'Overall GL Rankings'], total: ['各级别排名', 'Weight Class Rankings'],
-    totalOverall: ['总成绩排名', 'Total Rankings'], squat: ['蹲举排名', 'Squat Rankings'],
+    gl: ['GL系数总排名', 'Overall GL Rankings'], total: ['级别总成绩排名', 'Total Rankings by Weight Class'],
+    classSquat: ['级别蹲举排名', 'Squat Rankings by Weight Class'],
+    classBench: ['级别卧推举排名', 'Bench Press Rankings by Weight Class'],
+    classDeadlift: ['级别硬举排名', 'Deadlift Rankings by Weight Class'],
+    squat: ['蹲举排名', 'Squat Rankings'],
     bench: ['卧推举排名', 'Bench Press Rankings'], deadlift: ['硬举排名', 'Deadlift Rankings']
   };
   const metricNamesEn = {gl: 'IPF GL points', total: 'total', squat: 'squat', bench: 'bench press', deadlift: 'deadlift'};
+  function restoreSort(value) {
+    if (value === 'totalOverall') return 'total';
+    return Object.hasOwn(modeTitles, value) ? value : 'gl';
+  }
   function element(tag, text, cls) {
     const node = document.createElement(tag);
     if (text !== undefined) node.textContent = text;
@@ -1151,6 +1235,14 @@ globalThis.rankResults = rankResults;
   function setupFilterPanel(form, filters, limits, initialClasses, changed) {
     const panel = {manualGenders: [], classesByGender: initialClasses};
     const sortField = form.querySelector('.sort-field select');
+    const classMetricField = form.querySelector('.class-metric-field');
+    const classMetric = classMetricField.querySelector('select');
+    function syncSort() {
+      const byClass = isClassSort(filters.sort);
+      sortField.value = byClass ? 'total' : filters.sort;
+      classMetricField.hidden = !byClass;
+      classMetric.value = byClass ? rankingMetric(filters.sort) : 'total';
+    }
     function refreshClasses(detail) {
       const genders = panel.manualGenders.length ? panel.manualGenders : limits.genders;
       const available = new Set(genders.flatMap(gender => panel.classesByGender.get(gender)));
@@ -1174,6 +1266,7 @@ globalThis.rankResults = rankResults;
       return matches.length === limits.genders.length ? [] : matches;
     }
     function syncFilters() {
+      syncSort();
       for (const detail of form.querySelectorAll('details')) {
         if (detail.dataset.key === 'classes') refreshClasses(detail);
         else updateFilter(detail, filters);
@@ -1217,7 +1310,15 @@ globalThis.rankResults = rankResults;
         if (open) { open.open = false; open.querySelector('summary').focus(); }
       });
       form.addEventListener('submit', event => event.preventDefault());
-      sortField.addEventListener('change', () => { filters.sort = sortField.value; changed(); });
+      sortField.addEventListener('change', () => {
+        filters.sort = sortField.value;
+        syncSort();
+        changed();
+      });
+      classMetric.addEventListener('change', () => {
+        filters.sort = classSortByMetric[classMetric.value];
+        changed();
+      });
     }
     panel.sync = syncFilters;
     panel.gendersForClasses = gendersForClasses;
@@ -1227,7 +1328,6 @@ globalThis.rankResults = rankResults;
         if (key !== 'classes') detail.querySelector('.options').replaceChildren(...['*', ...limits[key]].map(value => checkbox(key, value)));
       }
       syncFilters();
-      sortField.value = filters.sort;
     };
     bindPanel();
     return panel;
@@ -1238,7 +1338,7 @@ globalThis.rankResults = rankResults;
     if (key === 'bodyweight' || key === 'gl') return row[key].toFixed(2);
     return String(row[key]);
   }
-  function addHead(table, keys) {
+  function addHead(table, keys, metric) {
     const widths = keys.map(key => fields[key][2]);
     const sum = widths.reduce((a, b) => a + b, 0);
     const cols = element('colgroup');
@@ -1246,13 +1346,18 @@ globalThis.rankResults = rankResults;
     keys.forEach((key, index) => {
       const col = element('col'); col.style.width = `${100 * widths[index] / sum}%`; cols.append(col);
       const th = element('th', undefined, key); th.scope = 'col';
-      bilingual(th, fields[key][0], columnTitles[key], fields[key][1]);
+      if (key === 'class_place' && singleLifts.includes(metric)) {
+        const english = columnTitles[metric] + ' rank';
+        bilingual(th, fields[metric][0] + '排名', english, english.toUpperCase());
+      } else {
+        bilingual(th, fields[key][0], columnTitles[key], fields[key][1]);
+      }
       if (language === 'en' && fields[key][1].endsWith('/ kg')) th.append(element('small', 'kg'));
       row.append(th);
     });
     head.append(row); table.append(cols, head);
   }
-  function archiveCell(key, record) {
+  function archiveCell(key, record, placings) {
     const cell = element('td', undefined, key + (key === 'total' ? ' primary' : ''));
     if (key === 'meet_name') {
       const link = element('a', undefined, 'meet-link');
@@ -1274,7 +1379,7 @@ globalThis.rankResults = rankResults;
       cell.append(element('small', date, 'meet-date'));
       cell.title = meetTitle(record, 'en');
     } else if (key === 'class_place') {
-      for (const {division, place} of recordPlaces(record)) {
+      for (const {division, place} of placings || recordPlaces(record)) {
         const line = element('div', undefined, 'placing');
         if (medals[place]) {
           const medal = element('span', medals[place], 'medal');
@@ -1295,6 +1400,12 @@ globalThis.rankResults = rankResults;
   function recordPlaces(record) {
     return record.class_places?.length ? record.class_places : [{division: record.division || record.age_division, place: record.class_place}];
   }
+  const meetLiftPlaces = new Map();
+  function competitionLiftPlaces(record, metric) {
+    const key = record.meet_id + '/' + metric;
+    if (!meetLiftPlaces.has(key)) meetLiftPlaces.set(key, liftPlacings(byMeet.get(record.meet_id), metric));
+    return meetLiftPlaces.get(key).get(record.record_id);
+  }
   function plainClick(event) {
     return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
   }
@@ -1307,7 +1418,7 @@ globalThis.rankResults = rankResults;
   }
   function homeMeetHash(row) {
     const params = new URLSearchParams({meet: row.meet_id});
-    if (singleLifts.includes(filters.sort)) params.set('sort', filters.sort);
+    if (filters.sort !== 'gl') params.set('sort', filters.sort);
     return '#' + params.toString();
   }
   function openHomeMeet(row, focusControl) {
@@ -1346,16 +1457,17 @@ globalThis.rankResults = rankResults;
     const primary = rankingMetric((singleMeet ? meetFilters : filters).sort);
     for (const key of keys) {
       if (key === 'class_place') {
-        tr.append(archiveCell(key, record));
+        let places;
+        if (singleLifts.includes(primary)) {
+          places = competitionLiftPlaces(record, primary);
+          if (singleMeet && meetFilters.divisions.length) places = places.filter(p => meetFilters.divisions.includes(p.division));
+        }
+        tr.append(archiveCell(key, record, places));
         continue;
       }
       const td = element('td', undefined, key + (key === primary ? ' primary' : ''));
       if (key === 'name') {
         td.append(singleMeet ? meetProfileLink(record) : createAthleteLink(record));
-      } else if (key === 'rank' && singleLifts.includes(primary) && medals[record.rank]) {
-        const medal = element('span', medals[record.rank], 'medal');
-        medal.setAttribute('aria-hidden', 'true');
-        td.append(medal, String(record.rank));
       } else { td.textContent = format(key, record); }
       tr.append(td);
     }
@@ -1404,7 +1516,8 @@ globalThis.rankResults = rankResults;
       const table = element('table', undefined, singleMeet ? 'ranking meet-table' : 'ranking');
       if (keys.includes('team')) table.classList.add('international-table');
       table.setAttribute('aria-label', genderLabel(gender) + tr('', ' · ') + document.getElementById('mode-zh').textContent);
-      addHead(table, keys); for (const entry of entries) addGroup(table, entry, keys, singleMeet);
+      addHead(table, keys, rankingMetric((singleMeet ? meetFilters : filters).sort));
+      for (const entry of entries) addGroup(table, entry, keys, singleMeet);
       scroll.append(table); section.append(heading, scroll); fragment.append(section);
     }
     return fragment;
@@ -1414,7 +1527,7 @@ globalThis.rankResults = rankResults;
     const metric = rankingMetric(filters.sort);
     setMode(filters.sort);
     const groups = rankResults(data, filters);
-    const keys = resultColumns.filter(key => filters.sort !== 'total' || key !== 'weight_class');
+    const keys = resultColumns.filter(key => !isClassSort(filters.sort) || key !== 'weight_class');
     const fragment = tableSections(groups, keys);
     if (!groups.length) {
       const empty = element('div', undefined, 'empty'); empty.append(element('p', tr('没有符合当前筛选条件的成绩', 'No results match these filters.')));
@@ -1496,8 +1609,8 @@ globalThis.rankResults = rankResults;
         const options = key === 'genders' ? meetPanel.manualGenders : meetFilters[key];
         for (const value of options) params.append(parameter, value);
       }
-      if (meetFilters.sort !== 'gl') params.set('sort', meetFilters.sort);
     }
+    if (meetFilters.sort !== 'gl') params.set('sort', meetFilters.sort);
     return '#' + params.toString();
   }
   function saveMeetPosition(record, search) {
@@ -1575,7 +1688,7 @@ globalThis.rankResults = rankResults;
     }).filter(group => group.rows.length);
     const teamColumns = currentMeet.rows[0].meet_type === 'international' ? ['team'] : [];
     const keys = ['rank', 'name', ...teamColumns, 'class_place', 'weight_class', 'bodyweight', 'squat', 'bench', 'deadlift', 'total', 'gl']
-      .filter(key => meetFilters.sort !== 'total' || key !== 'weight_class');
+      .filter(key => !isClassSort(meetFilters.sort) || key !== 'weight_class');
     const fragment = tableSections(groups, keys, true);
     if (!groups.length) {
       const box = element('div', undefined, 'empty');
@@ -1628,8 +1741,7 @@ globalThis.rankResults = rankResults;
       meetFilters[key] = meetLimits[key].filter(value => hash.getAll(parameter).includes(value));
     }
     meetPanel.manualGenders = [...meetFilters.genders];
-    const sort = hash.get('sort');
-    meetFilters.sort = Object.hasOwn(modeTitles, sort) ? sort : 'gl';
+    meetFilters.sort = restoreSort(hash.get('sort'));
     meetPanel.populate();
     meetFilters.genders = meetPanel.gendersForClasses();
     updateFilter(meetForm.querySelector('[data-key=genders]'), meetFilters);
@@ -1684,10 +1796,9 @@ globalThis.rankResults = rankResults;
     const saved = !translating && history.state?.ranking;
     if (saved) {
       Object.assign(filters, {meetTypes: []}, saved.filters);
-      if (!Object.hasOwn(modeTitles, filters.sort)) filters.sort = 'gl';
+      filters.sort = restoreSort(filters.sort);
       rankingPanel.manualGenders = saved.manualGenders ?? saved.filters.genders;
       if (!saved.manualGenders) filters.genders = rankingPanel.gendersForClasses();
-      sortField.value = filters.sort;
       listAll.clear();
       saved.expanded.forEach(id => listAll.add(id));
       rankingPanel.sync();
