@@ -681,11 +681,8 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
         <details class="filter" data-key="meetTypes"><summary><span class="field-name"><span data-i18n-en="Meet type">赛事类型</span> <small lang="en">MEET TYPE</small></span><span class="selection" data-i18n-en="All meet types">全部赛事</span></summary><div class="options" role="group" aria-label="赛事" data-i18n-en-aria-label="Meet type"></div></details>
         <label class="sort-field"><span class="field-name"><span data-i18n-en="Rank by">排名依据</span> <small lang="en">RANK BY</small></span>
           <select id="sort" aria-controls="class-metric" name="sort">
-            <option value="gl" data-i18n-en="IPF GL points">GL系数</option>
             <option value="total" data-i18n-en="By weight class">级别成绩</option>
-            <option value="squat" data-i18n-en="Squat">蹲举</option>
-            <option value="bench" data-i18n-en="Bench Press">卧推举</option>
-            <option value="deadlift" data-i18n-en="Deadlift">硬举</option>
+            <option value="gl" data-i18n-en="IPF GL points" selected>GL系数</option>
           </select>
         </label>
         <label class="class-metric-field" for="class-metric" hidden>
@@ -722,11 +719,8 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
         <details class="filter" data-key="divisions"><summary><span class="field-name"><span data-i18n-en="Age division">年龄组</span> <small lang="en">DIVISION</small></span><span class="selection" data-i18n-en="All divisions">全部年龄组</span></summary><div class="options" role="group" aria-label="年龄组" data-i18n-en-aria-label="Age division"></div></details>
         <label class="sort-field"><span class="field-name"><span data-i18n-en="Rank by">排名依据</span> <small lang="en">RANK BY</small></span>
           <select id="meet-sort" aria-controls="meet-class-metric">
-            <option value="gl" data-i18n-en="IPF GL points">GL系数</option>
             <option value="total" data-i18n-en="By weight class">级别成绩</option>
-            <option value="squat" data-i18n-en="Squat">蹲举</option>
-            <option value="bench" data-i18n-en="Bench Press">卧推举</option>
-            <option value="deadlift" data-i18n-en="Deadlift">硬举</option>
+            <option value="gl" data-i18n-en="IPF GL points" selected>GL系数</option>
           </select>
         </label>
         <label class="class-metric-field" for="meet-class-metric" hidden>
@@ -1072,14 +1066,13 @@ globalThis.liftPlacings = liftPlacings;
     gl: ['GL系数总排名', 'Overall GL Rankings'], total: ['级别总成绩排名', 'Total Rankings by Weight Class'],
     classSquat: ['级别蹲举排名', 'Squat Rankings by Weight Class'],
     classBench: ['级别卧推举排名', 'Bench Press Rankings by Weight Class'],
-    classDeadlift: ['级别硬举排名', 'Deadlift Rankings by Weight Class'],
-    squat: ['蹲举排名', 'Squat Rankings'],
-    bench: ['卧推举排名', 'Bench Press Rankings'], deadlift: ['硬举排名', 'Deadlift Rankings']
+    classDeadlift: ['级别硬举排名', 'Deadlift Rankings by Weight Class']
   };
   const metricNamesEn = {gl: 'IPF GL points', total: 'total', squat: 'squat', bench: 'bench press', deadlift: 'deadlift'};
   function restoreSort(value) {
     if (value === 'totalOverall') return 'total';
-    return Object.hasOwn(modeTitles, value) ? value : 'gl';
+    if (singleLifts.includes(value)) return classSortByMetric[value];
+    return isClassSort(value) ? value : 'gl';
   }
   function element(tag, text, cls) {
     const node = document.createElement(tag);
