@@ -257,6 +257,7 @@ button, summary, select, .options label { cursor: pointer; }
 .athlete-lookup input[type="search"]::placeholder { color: var(--muted); opacity: 1; }
 .athlete-lookup [role="region"] {
   position: absolute;
+  z-index: 5;
   top: calc(100% + 2px);
   left: -1px;
   width: max(100%, min(21rem, 88vw));
@@ -269,6 +270,7 @@ button, summary, select, .options label { cursor: pointer; }
 }
 .athlete-lookup [role="region"] .athlete {
   display: flex;
+  touch-action: manipulation;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
@@ -1979,12 +1981,21 @@ globalThis.liftPlacings = liftPlacings;
   }
   function setupSearch(searchInput, searchMatches, searchStatus, source, linkFor, withMeets = false) {
     let searchResults = [];
+    let renderedValue = '';
+    let pressedPointer = null;
+    let releaseTimer;
+    function clearPress() {
+      clearTimeout(releaseTimer);
+      pressedPointer = null;
+    }
     function closeMatches() {
       searchMatches.hidden = true;
       searchStatus.textContent = '';
+      clearPress();
     }
     function showMatches() {
-      const query = searchKey(searchInput.value);
+      renderedValue = searchInput.value;
+      const query = searchKey(renderedValue);
       if (!query) {
         searchResults = [];
         searchMatches.replaceChildren();
@@ -2038,10 +2049,37 @@ globalThis.liftPlacings = liftPlacings;
         tr('找到 ' + n + ' 位运动员', n + (n === 1 ? ' athlete' : ' athletes'));
     }
     const lookup = searchInput.closest('.athlete-lookup');
-    searchInput.addEventListener('input', showMatches);
-    searchInput.addEventListener('focus', showMatches);
+    function updateQuery() {
+      if (pressedPointer === null && (searchMatches.hidden || searchInput.value !== renderedValue)) showMatches();
+    }
+    // Keep the tapped link in the DOM if the keyboard commits text during the press.
+    searchMatches.addEventListener('pointerdown', event => {
+      if (!event.target.closest('a') || !plainClick(event) || event.isPrimary === false) return;
+      clearPress();
+      pressedPointer = event.pointerId;
+      if (document.activeElement === searchInput) event.preventDefault();
+    });
+    function resumeInput() {
+      clearPress();
+      if (!searchMatches.hidden) updateQuery();
+    }
+    function releasePointer(event) {
+      if (pressedPointer !== event.pointerId) return;
+      if (event.type === 'pointercancel' || !searchMatches.contains(event.target)) {
+        resumeInput();
+        return;
+      }
+      // Some keyboards send their final input between pointerup and the native click.
+      // Release abandoned presses as well (e.g. after a long press without a click).
+      releaseTimer = setTimeout(resumeInput, 600);
+    }
+    document.addEventListener('pointerup', releasePointer);
+    document.addEventListener('pointercancel', releasePointer);
+    searchMatches.addEventListener('click', clearPress, true);
+    searchInput.addEventListener('input', updateQuery);
+    searchInput.addEventListener('focus', updateQuery);
     lookup.addEventListener('focusout', event => {
-      if (event.relatedTarget && !lookup.contains(event.relatedTarget)) closeMatches();
+      if (pressedPointer === null && event.relatedTarget && !lookup.contains(event.relatedTarget)) closeMatches();
     });
     document.addEventListener('click', event => {
       if (!lookup.contains(event.target)) closeMatches();
