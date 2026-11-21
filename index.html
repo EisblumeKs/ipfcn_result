@@ -581,16 +581,6 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
   html[lang="en"] .table-scroll::before { content: "Scroll horizontally to see all columns  ↔"; }
 }
 
-@media (min-width: 801px) {
-  #ranking-view .filters:has(.discipline-field:not([hidden])),
-  .meet-filters:has(.discipline-field:not([hidden])) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  #ranking-view .filters:has(.discipline-field:not([hidden])) :is(.athlete-lookup, .meet-picker) { grid-column: span 2; }
-  #ranking-view .filters:has(.discipline-field:not([hidden])) :is(.filter, .sort-field) { grid-column: auto; }
-  .filters .discipline-field,
-  #ranking-view .filters:has(.discipline-field:not([hidden])) .sort-field:has(+ .class-metric-field[hidden]),
-  .meet-filters:has(.discipline-field:not([hidden])) .sort-field:has(+ .class-metric-field[hidden]) { grid-column: span 2; }
-}
-
 @media (max-width: 800px) {
   .sheet { padding-inline: 18px; }
   .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -601,8 +591,6 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
   .sort-field:has(+ .class-metric-field:not([hidden])) { grid-column: 1; }
   .class-metric-field { grid-column: 2; }
   .meet-filters:has(.class-metric-field:not([hidden])) .filter[data-key="divisions"] { grid-column: 1 / -1; }
-  .filters .discipline-field,
-  .meet-filters:has(.discipline-field:not([hidden])) .filter[data-key="divisions"] { grid-column: 1 / -1; }
 }
 
 @media (max-width: 530px) {
@@ -631,6 +619,202 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
   .section-bar { min-height: 35px; }
   .section-bar small { font-size: 11px; }
 }
+
+
+.project-nav {
+  display: inline-grid;
+  grid-template-columns: auto auto auto;
+  align-self: start;
+  gap: 1px;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+.project-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 44px;
+  padding: 5px 10px;
+  background: var(--header);
+  color: var(--muted);
+  font: 600 15px/1.2 var(--chinese);
+  text-align: center;
+  text-decoration: none;
+}
+.project-nav small { font: 500 9px/1.1 var(--sans); }
+.project-nav a[aria-current="page"] { color: var(--text); background: var(--group); box-shadow: inset 0 -2px var(--accent); }
+.project-nav a[href]:hover, .project-nav a:focus-visible { color: var(--text); background: var(--group); }
+.project-nav a[aria-disabled="true"] { opacity: .55; }
+.records-tools { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 10px; margin-block: 0 16px; }
+.records-tools .discipline-field { min-width: 155px; }
+.records-tools [data-records-update] { min-width: 0; max-width: 100%; }
+.masthead .mast-mode[hidden] { display: none; }
+@media (min-width: 1101px) {
+  .masthead { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: start; }
+  .masthead:has(.mast-mode[hidden]) { grid-template-columns: minmax(0, 1fr) auto auto; }
+}
+@media (min-width: 531px) and (max-width: 1100px) {
+  .masthead { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: start; gap: 10px 12px; }
+  .mast-title { grid-column: 1; grid-row: 1; }
+  .mast-mode { grid-column: 2; grid-row: 1; }
+  .display-controls { grid-column: 3; grid-row: 1; }
+  .project-nav { grid-row: 2; grid-column: 1 / -1; justify-self: start; }
+}
+@media (max-width: 530px) {
+  .project-nav { grid-column: 1 / -1; grid-row: 3; grid-template-columns: 1fr 1fr 1.45fr; margin-top: 4px; }
+  .project-nav a { padding-inline: 5px; font-size: 13px; }
+  .project-nav small { font-size: 8px; }
+}
+
+#records-content {
+  --rd-rule: color-mix(in srgb, var(--muted) 25%, transparent);
+  --rd-paper: #fff;
+  --rd-ink: #192c42;
+  --rd-chart-muted: #495b6d;
+  --rd-blue: #225995;
+  --rd-orange: #a64b20;
+  width: 100%;
+  min-width: 0;
+}
+.rd-section {
+  margin: 0 0 22px;
+  border: 1px solid var(--line);
+  background: var(--header);
+  color: var(--text);
+}
+.rd-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--group);
+  padding: 14px clamp(14px, 2vw, 26px);
+}
+.rd-section h3, .rd-section h4, .rd-section p { margin: 0; }
+.rd-header h3 {
+  margin: 0;
+  font: 600 clamp(18px, 1.6vw, 23px)/1.28 var(--chinese);
+  letter-spacing: .015em;
+}
+html[lang="en"] .rd-header h3 { font-family: var(--sans); }
+.rd-header p { margin-top: 5px; color: var(--muted); font-size: .875rem; line-height: 1.55; }
+.rd-filters, .rd-chart-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 25px;
+  padding: 14px clamp(14px, 2vw, 26px);
+}
+.rd-field { display: inline-flex; align-items: center; gap: 9px; font-size: .875rem; }
+.rd-field > span { color: var(--muted); }
+.rd-field select {
+  min-height: 36px;
+  appearance: none;
+  color: var(--text);
+  background-color: var(--header);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 13px center, right 9px center;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 5px 28px 5px 11px;
+}
+.rd-table-wrap { padding: 0 clamp(14px, 2vw, 26px) 18px; }
+.rd-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9375rem; line-height: 1.45; }
+.rd-table caption { color: var(--text); text-align: left; padding: 0 0 12px; font-size: 1.125rem; font-weight: 600; }
+.rd-table thead { background: var(--group); }
+.rd-table th, .rd-table td { padding: 9px 12px; border-bottom: 1px solid var(--rd-rule); }
+.rd-table thead th { color: var(--muted); font-size: .8125rem; font-weight: 600; }
+.rd-table tbody th { width: 16%; font-weight: 500; }
+.rd-table .rd-mark { width: 20%; font-size: 1.15rem; font-weight: 650; }
+.rd-table .rd-mark small { color: var(--muted); font-size: .8125rem; font-weight: 400; }
+.rd-table .rd-person { width: 22%; }
+.rd-table a { color: var(--text); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+.rd-table a:hover { color: var(--focus); }
+.rd-event small { display: block; color: var(--muted); font-size: .8125rem; margin-top: 2px; }
+.rd-group-note { margin-top: 10px !important; font-size: .8125rem; color: var(--muted); }
+.rd-chart-heading { justify-content: space-between; }
+.rd-chart-heading h4 { font-size: 1.02rem; line-height: 1.4; font-weight: 600; }
+.rd-figure {
+  margin: 0 clamp(10px, 2vw, 26px) 18px;
+  padding: clamp(8px, 1.25vw, 16px);
+  color: var(--rd-ink);
+  background: var(--rd-paper);
+  border: 1px solid #c4d0db;
+}
+.rd-header + .rd-figure { margin-top: 16px; }
+.rd-legend, .rd-chart-foot { display: flex; flex-wrap: wrap; gap: 6px 24px; }
+.rd-legend { padding: 0 3px 5px; }
+.rd-series, .rd-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--rd-chart-muted);
+  font-size: .8125rem;
+  line-height: 1.5;
+}
+.rd-chart-foot { justify-content: space-between; margin: 5px 3px 0; color: var(--rd-chart-muted); font-size: .8125rem; }
+.rd-kde-key, .rd-hist-key, .rd-swatch { display:inline-block; flex:none; }
+.rd-swatch { width: 19px; height: 3px; background: currentColor; }
+.rd-hist-key { width: 13px; height: 10px; border: 1px solid #72879c; background: #c6d2de; }
+.rd-kde-key { margin-left: .55em; width: 17px; border-top: 2px solid #405c77; }
+.rd-plot { width: 100%; min-width: 0; }
+.rd-plot svg { display: block; width: 100%; overflow: visible; }
+.rd-plot text { font: 13px var(--sans); fill: var(--rd-chart-muted); }
+.rd-plot .rd-axis-label { font-weight: 500; fill: var(--rd-ink); }
+.rd-gridline { stroke: #dae2e8; stroke-width: 1; }
+.rd-axis { stroke: #647586; stroke-width: 1; fill: none; }
+.rd-blue { color: var(--rd-blue); }
+.rd-orange { color: var(--rd-orange); }
+.rd-bars rect { fill: currentColor; fill-opacity: .31; stroke: white; stroke-width: .65; }
+.rd-bars.rd-compared rect { fill-opacity: .20; stroke: currentColor; stroke-opacity: .35; stroke-width: .65; }
+.rd-fill { fill: currentColor; fill-opacity: .13; }
+.rd-curve { fill: none; stroke: currentColor; stroke-width: 2.15; stroke-linejoin: round; }
+.rd-curve.rd-orange { stroke-dasharray: 6 3; }
+.rd-swatch.rd-orange { background: repeating-linear-gradient(90deg, currentColor 0 5px, transparent 5px 8px); }
+.rd-point { fill: currentColor; stroke: white; stroke-width: .8; }
+.rd-marker { stroke: #647586; stroke-width: 1; stroke-dasharray: 4 3; }
+.rd-empty, .rd-sparse { font-size: .875rem; line-height: 1.5; color: var(--rd-chart-muted); padding: .55em .2em; }
+@media (max-width: 600px) {
+  .rd-section { margin-bottom: 15px; }
+  .rd-header p { font-size: .8125rem; }
+  .rd-chart-heading, .rd-filters { gap: 9px 14px; }
+  .rd-field { gap: 6px; }
+  .rd-table { font-size: .875rem; }
+  .rd-table thead th, .rd-table th, .rd-table td { padding: 8px 4px; }
+  .rd-table thead th, .rd-event small { font-size: .75rem; }
+  .rd-table .rd-mark { width: auto; font-size: 1rem; white-space: nowrap; }
+  .rd-table .rd-person { width: 19%; }
+  .rd-table .rd-event { overflow-wrap: anywhere; }
+  .rd-table .rd-mark small { font-size: .7rem; }
+  .rd-legend { gap: 3px 10px; }
+  .rd-legend .rd-series, .rd-marks, .rd-chart-foot { font-size: .75rem; }
+  .rd-plot text { font-size: 11px; }
+}
+@media print {
+  .rd-section { break-inside: avoid; }
+  .rd-header, .rd-figure { print-color-adjust: exact; }
+}
+
+.dataset-tools { font-size: .875rem; }
+.dataset-tools > summary {
+  color: var(--text); padding: .5rem .65rem; cursor: pointer;
+  border: 1px solid var(--line); background: var(--header);
+}
+.dataset-body {
+  padding: .75rem 1rem; margin-top: .35rem; background: var(--header);
+  border: 1px solid var(--line); max-width: 35rem; line-height: 1.55; color: var(--muted);
+}
+.dataset-body p { margin: .45rem 0; }
+.dataset-body a { color: var(--text); text-underline-offset: .18rem; }
+.dataset-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .85rem; margin-block: .6rem; }
+.dataset-actions button {
+  color: var(--text); background: var(--group); border: 1px solid var(--line);
+  padding: .42rem .7rem; border-radius: 2px; cursor: pointer;
+}
+.dataset-status { color: var(--text); overflow-wrap: anywhere; }
+.dataset-status:empty { display: none; }
+[data-records-update] { min-width: 0; max-width: 100%; }
 </style>
   <script>
     (() => {
@@ -656,7 +840,6 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
       try { saved = localStorage.getItem(key); } catch {}
       applyTheme(saved);
       document.addEventListener('DOMContentLoaded', () => {
-        delete root.dataset.languagePending;
         const select = document.getElementById('theme-select');
         select.value = root.dataset.theme;
         select.addEventListener('change', () => {
@@ -674,6 +857,11 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
   <main class="sheet">
     <header class="masthead">
       <div class="mast-title"><h1 id="page-heading" data-i18n-en="IPFcn Competition Results">IPFcn比赛成绩查询系统</h1><p id="page-subtitle" class="secondary-copy" lang="en">IPFcn COMPETITION RESULTS</p></div>
+      <nav class="project-nav" aria-label="成绩导航" data-i18n-en-aria-label="Results navigation">
+        <a id="nav-sbd" href="#" data-project="SBD" aria-current="page"><span data-i18n-en="Powerlifting">力量举</span><small class="secondary-copy" lang="en">POWERLIFTING</small></a>
+        <a id="nav-bench" href="#discipline=B" data-project="B"><span data-i18n-en="Bench Press">卧推举</span><small class="secondary-copy" lang="en">BENCH PRESS</small></a>
+        <a id="nav-records" href="#records"><span data-i18n-en="Records &amp; Distributions">纪录与分布</span><small class="secondary-copy" lang="en">RECORDS &amp; DISTRIBUTIONS</small></a>
+      </nav>
       <div class="mast-mode"><h2 id="mode-zh" data-i18n-en="Overall GL Rankings">GL系数总排名</h2><p id="mode-en" class="secondary-copy" lang="en">OVERALL GL RANKINGS</p></div>
       <div class="display-controls">
         <label class="theme-control">
@@ -707,13 +895,6 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
         <details class="filter" data-key="genders"><summary><span class="field-name"><span data-i18n-en="Gender">性别</span> <small lang="en">GENDER</small></span><span class="selection" data-i18n-en="Men and women">男女全部</span></summary><div class="options" role="group" aria-label="性别" data-i18n-en-aria-label="Gender"></div></details>
         <details class="filter" data-key="classes"><summary><span class="field-name"><span data-i18n-en="Weight class (kg)">级别</span> <small lang="en">CLASS / kg</small></span><span class="selection" data-i18n-en="All classes">全部级别</span></summary><div class="options" role="group" aria-label="级别" data-i18n-en-aria-label="Weight class"></div></details>
         <details class="filter" data-key="meetTypes"><summary><span class="field-name"><span data-i18n-en="Meet type">赛事类型</span> <small lang="en">MEET TYPE</small></span><span class="selection" data-i18n-en="All meet types">全部赛事</span></summary><div class="options" role="group" aria-label="赛事" data-i18n-en-aria-label="Meet type"></div></details>
-        <label class="discipline-field" for="discipline" hidden>
-          <span class="field-name"><span data-i18n-en="Discipline">比赛项目</span> <small lang="en">DISCIPLINE</small></span>
-          <select id="discipline" name="discipline">
-            <option value="SBD" data-i18n-en="Powerlifting">力量举三项</option>
-            <option value="B" data-i18n-en="Bench Press">卧推举单项</option>
-          </select>
-        </label>
         <label class="sort-field"><span class="field-name"><span data-i18n-en="Rank by">排名依据</span> <small lang="en">RANK BY</small></span>
           <select id="sort" aria-controls="class-metric" name="sort">
             <option value="total" data-i18n-en="By weight class">级别成绩</option>
@@ -752,13 +933,6 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
         <details class="filter" data-key="genders"><summary><span class="field-name"><span data-i18n-en="Gender">性别</span> <small lang="en">GENDER</small></span><span class="selection" data-i18n-en="Men and women">男女全部</span></summary><div class="options" role="group" aria-label="性别" data-i18n-en-aria-label="Gender"></div></details>
         <details class="filter" data-key="classes"><summary><span class="field-name"><span data-i18n-en="Weight class (kg)">级别</span> <small lang="en">CLASS / kg</small></span><span class="selection" data-i18n-en="All classes">全部级别</span></summary><div class="options" role="group" aria-label="级别" data-i18n-en-aria-label="Weight class"></div></details>
         <details class="filter" data-key="divisions"><summary><span class="field-name"><span data-i18n-en="Age division">年龄组</span> <small lang="en">DIVISION</small></span><span class="selection" data-i18n-en="All divisions">全部年龄组</span></summary><div class="options" role="group" aria-label="年龄组" data-i18n-en-aria-label="Age division"></div></details>
-        <label class="discipline-field" for="meet-discipline" hidden>
-          <span class="field-name"><span data-i18n-en="Discipline">比赛项目</span> <small lang="en">DISCIPLINE</small></span>
-          <select id="meet-discipline" name="meet-discipline">
-            <option value="SBD" data-i18n-en="Powerlifting">力量举三项</option>
-            <option value="B" data-i18n-en="Bench Press">卧推举单项</option>
-          </select>
-        </label>
         <label class="sort-field"><span class="field-name"><span data-i18n-en="Rank by">排名依据</span> <small lang="en">RANK BY</small></span>
           <select id="meet-sort" aria-controls="meet-class-metric">
             <option value="total" data-i18n-en="By weight class">级别成绩</option>
@@ -779,6 +953,15 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
       <div class="sr-only" id="meet-result-status" role="status"></div>
       <div id="meet-rankings"></div>
     </div>
+    <section id="records-view" aria-labelledby="page-heading" hidden>
+      <div class="records-tools">
+        <label class="discipline-field" for="records-discipline"><span class="field-name"><span data-i18n-en="Discipline">比赛项目</span> <small lang="en">DISCIPLINE</small></span>
+          <select id="records-discipline"><option value="SBD" data-i18n-en="Powerlifting">力量举三项</option><option value="B" data-i18n-en="Bench Press">卧推举单项</option></select>
+        </label>
+        <div data-records-update></div>
+      </div>
+      <div id="records-content"></div>
+    </section>
     <noscript><span lang="zh-CN">请开启 JavaScript 以查看和筛选成绩。</span> <span lang="en">Enable JavaScript to view and filter results.</span></noscript>
     <footer>
       <p class="zh-footer" lang="zh-CN">本榜收录自 2020 年以来 IPFcn B 级（区域赛）及以上赛事的经典（无装备）力量举三项与卧推举单项成绩。APF（亚洲力量举联合会）和 IPF（国际力量举联合会）国际赛事的单场成绩表涵盖各代表队。代表中国参赛的运动员成绩计入总榜。个别涉及反兴奋剂争议的运动员未纳入统计。</p>
@@ -911,16 +1094,751 @@ globalThis.isClassSort = isClassSort;
 globalThis.rankingMetric = rankingMetric;
 globalThis.liftPlacings = liftPlacings;
 </script>
+  <script>(() => {
+  'use strict';
+
+  const preferences = new WeakMap();
+  const sqrtTwoPi = Math.sqrt(2 * Math.PI);
+  const names = {
+    squat: ['蹲举', 'Squat'], bench: ['卧推举', 'Bench press'],
+    deadlift: ['硬举', 'Deadlift'], total: ['总成绩', 'Total'], gl: ['GL系数', 'GL points'],
+    M: ['男子', 'Men'], F: ['女子', 'Women']
+  };
+
+  function element(tag, className, content) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (content !== undefined) node.textContent = content;
+    return node;
+  }
+
+  function svgElement(tag, attrs, content) {
+    const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value);
+    if (content !== undefined) node.textContent = content;
+    return node;
+  }
+
+  function groupClass(row) {
+    const value = row.placement_weight_class || row.weight_class;
+    if (row.gender === 'F' && value === '43') return '47';
+    if (row.gender === 'M' && value === '53') return '59';
+    return value;
+  }
+
+  function compareClasses(a, b) {
+    return parseFloat(a) - parseFloat(b) || Number(a.endsWith('+')) - Number(b.endsWith('+'));
+  }
+
+  function bestByAthlete(rows, metric) {
+    const best = new Map();
+    for (const row of rows) {
+      if (!Number.isFinite(row[metric]) || row[metric] <= 0) continue;
+      const previous = best.get(row.athlete_id);
+      // For a repeated best mark, link to the earliest meet recorded for that athlete.
+      if (!previous || row[metric] > previous[metric] ||
+          (row[metric] === previous[metric] && row.meet_date < previous.meet_date)) {
+        best.set(row.athlete_id, row);
+      }
+    }
+    return [...best.values()];
+  }
+
+  function quantile(sorted, fraction) {
+    const position = fraction * (sorted.length - 1);
+    const lower = Math.floor(position);
+    return sorted[lower] + (position - lower) * (sorted[Math.ceil(position)] - sorted[lower]);
+  }
+
+  function niceStep(target) {
+    const unit = 10 ** Math.floor(Math.log10(target));
+    return [1, 2, 2.5, 5, 10].reduce((best, current) =>
+      Math.abs(current * unit - target) < Math.abs(best * unit - target) ? current : best, 1) * unit;
+  }
+
+  function histogramLayout(values, isGL) {
+    let min = Infinity;
+    let max = -Infinity;
+    let largestSample = 0;
+    for (const sample of values) {
+      if (!sample.length) continue;
+      min = Math.min(min, sample[0]);
+      max = Math.max(max, sample[sample.length - 1]);
+      largestSample = Math.max(largestSample, sample.length);
+    }
+    if (!largestSample) return null;
+    const span = max - min;
+    const target = isGL ? Math.min(40, Math.max(34, Math.ceil(2.5 * Math.sqrt(largestSample))))
+      : largestSample < 15 ? 18 : largestSample < 60 ? 28 : 32;
+    const minimumWidth = isGL ? 0.1 : 0.5;
+    const width = span ? Math.max(minimumWidth, niceStep(span / target)) : (isGL ? 1 : 2.5);
+    let first = Math.floor(min / width) * width;
+    let last = Math.ceil(max / width) * width;
+    if (min === max) {
+      first = min - width / 2;
+      last = min + width / 2;
+    }
+    const bins = Math.max(1, Math.round((last - first) / width));
+    const margin = span ? Math.max(width * .2, .05 * span) : width;
+    return {first, width, bins, xmin: Math.max(0, Math.min(first, min - margin)),
+      xmax: Math.max(last, max + margin)};
+  }
+
+  function refinedBandwidth(sorted, binWidth, baseline, upper) {
+    const n = sorted.length;
+    const lower = binWidth / 2;
+    if (lower >= baseline || lower >= upper) return baseline;
+    const frequency = new Map();
+    for (const value of sorted) frequency.set(value, (frequency.get(value) || 0) + 1);
+    const levels = [...frequency];
+    const pairs = new Map();
+    function add(distance, count) {
+      pairs.set(distance, (pairs.get(distance) || 0) + count);
+    }
+    for (let i = 0; i < levels.length; i++) {
+      const [x, count] = levels[i];
+      if (count > 1) add(0, count * (count - 1) / 2);
+      for (let j = 0; j < i; j++) add((x - levels[j][0]) ** 2, count * levels[j][1]);
+    }
+    const distances = [...pairs];
+    function risk(h) {
+      let integrated = n, leaveOneOut = 0;
+      for (const [square, count] of distances) {
+        const kernel = Math.exp(-square / (4 * h * h));
+        integrated += 2 * count * kernel;
+        leaveOneOut += 2 * count * kernel * kernel;
+      }
+      return integrated / (n * n * h * Math.sqrt(4 * Math.PI)) -
+        2 * leaveOneOut / (n * (n - 1) * h * sqrtTwoPi);
+    }
+    // Use a narrower fit only when the cross-validation risk improves by at least 5%.
+    const steps = 80;
+    const candidates = Array.from({length: steps + 1}, (_, i) => lower * (upper / lower) ** (i / steps));
+    const risks = candidates.map(risk);
+    const index = risks.indexOf(Math.min(...risks));
+    if (!index || index === steps) return baseline;
+    let lo = candidates[index - 1], hi = candidates[index + 1];
+    for (let step = 0; step < 18; step++) {
+      const a = (2 * lo + hi) / 3, b = (lo + 2 * hi) / 3;
+      if (risk(a) < risk(b)) hi = b;
+      else lo = a;
+    }
+    const candidate = (lo + hi) / 2, old = risk(baseline);
+    return candidate < baseline && (old - risk(candidate)) / Math.max(Math.abs(old), 1e-12) >= .05
+      ? candidate : baseline;
+  }
+
+  function kernelBandwidth(sorted, binWidth, isGL, refine) {
+    if (sorted.length < 3 || sorted[0] === sorted[sorted.length - 1]) return null;
+    const n = sorted.length;
+    const mean = sorted.reduce((a, b) => a + b, 0) / n;
+    const sd = Math.sqrt(sorted.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (n - 1));
+    const iqr = quantile(sorted, .75) - quantile(sorted, .25);
+    const scale = iqr > 0 ? Math.min(sd, iqr / 1.349) : sd;
+    const h = .9 * scale * n ** (-.2);
+    if (refine && n >= 20) return refinedBandwidth(sorted, binWidth, h, 2 * sd * n ** (-.2));
+    return !isGL && n < 15 ? Math.min(h, binWidth) : h;
+  }
+
+  function seriesEstimate(values, layout, isGL, refine) {
+    const n = values.length;
+    const counts = Array(layout.bins).fill(0);
+    for (const value of values) {
+      const bin = Math.floor((value - layout.first) / layout.width);
+      counts[Math.min(counts.length - 1, Math.max(0, bin))]++;
+    }
+    const bars = counts.map(count => count / (n * layout.width));
+    const h = kernelBandwidth(values, layout.width, isGL, refine);
+    const curve = [];
+    let peak = null;
+    if (h) {
+      const weights = new Map();
+      for (const value of values) weights.set(value, (weights.get(value) || 0) + 1);
+      const observations = [...weights];
+      const density = x => {
+        let sum = 0;
+        for (const [value, count] of observations) {
+          const z = (value - x) / h;
+          sum += count * Math.exp(-.5 * z * z);
+        }
+        return sum / (n * h * sqrtTwoPi);
+      };
+      // Include the observations so even a narrow concentration appears on a wide axis.
+      const grid = new Set(weights.keys());
+      const resolution = 500;
+      for (let i = 0; i <= resolution; i++) {
+        grid.add(layout.xmin + i * (layout.xmax - layout.xmin) / resolution);
+      }
+      for (const x of [...grid].sort((a, b) => a - b)) {
+        const point = [x, density(x)];
+        curve.push(point);
+        if (!peak || point[1] > peak[1]) peak = point;
+      }
+    }
+    return {counts, bars, curve, peak, h, median: quantile(values, .5)};
+  }
+
+  function chart(host, samples, {en, isGL, xLabel, median, contextTitle, refineBandwidth}) {
+    const t = (zh, eng) => en ? eng : zh;
+    host.replaceChildren();
+    samples = samples.filter(sample => sample.values.length);
+    for (const sample of samples) sample.values.sort((a, b) => a - b);
+    const layout = histogramLayout(samples.map(sample => sample.values), isGL);
+    if (!layout) {
+      host.append(element('p', 'rd-empty', t('暂无有效成绩。', 'No results available.')));
+      return () => {};
+    }
+    const estimates = samples.map(sample => seriesEstimate(sample.values, layout, isGL, refineBandwidth));
+    const legend = element('div', 'rd-legend');
+    for (const [index, sample] of samples.entries()) {
+      const estimate = estimates[index];
+      const showMedian = median && !isGL;
+      const value = showMedian ? estimate.median : estimate.peak?.[0];
+      const label = [sample.label, 'n = ' + sample.values.length];
+      if (value !== null && value !== undefined) {
+        label.push((showMedian ? t('中位数 ', 'Median ') : t('峰值 ', 'Mode ')) +
+          Number(value.toFixed(1)) + (isGL ? '' : ' kg'));
+      }
+      const item = element('span', 'rd-series');
+      const swatch = element('i', 'rd-swatch rd-' + sample.color);
+      swatch.setAttribute('aria-hidden', 'true');
+      item.append(swatch, document.createTextNode(label.join(' · ')));
+      legend.append(item);
+    }
+    const figure = element('div', 'rd-plot');
+    const foot = element('div', 'rd-chart-foot');
+    const hasKDE = estimates.some(series => series.h !== null);
+    const markLegend = element('span', 'rd-marks');
+    markLegend.append(element('i', 'rd-hist-key'), document.createTextNode(t('直方图', 'Histogram')));
+    if (hasKDE) markLegend.append(element('i', 'rd-kde-key'), document.createTextNode(t('高斯核密度估计', 'Gaussian KDE')));
+    foot.append(markLegend, element('span', '', t('组距 ', 'Bin width ') + Number(layout.width.toPrecision(6)) + (isGL ? '' : ' kg')));
+    host.append(legend, figure, foot);
+    if (estimates.some(estimate => !estimate.h)) {
+      host.append(element('p', 'rd-sparse', t('样本不足三人或成绩相同时，仅绘制直方图。',
+        'A histogram is shown for samples with fewer than three athletes or no variation.')));
+    }
+    const ymax = Math.max(...estimates.map(series => Math.max(...series.bars, series.peak?.[1] || 0))) * 1.12;
+    const pathFor = (points, px, py) => points.map(([x, y], i) =>
+      (i ? 'L' : 'M') + px(x).toFixed(2) + ' ' + py(y).toFixed(2)).join('');
+    let previousWidth = 0;
+    return () => {
+      const width = Math.round(figure.getBoundingClientRect().width);
+      if (width < 120 || width === previousWidth) return;
+      previousWidth = width;
+      const height = Math.max(224, Math.min(337, Math.round(width * .41)));
+      const yStep = niceStep(ymax / 4);
+      const labelDigits = String(Number(yStep.toPrecision(7))).length;
+      const left = Math.max(width < 470 ? 52 : 68, labelDigits * 8 + 28);
+      const right = width - (width < 470 ? 12 : 26);
+      const top = 17, bottom = height - 48;
+      const px = value => left + (value - layout.xmin) / (layout.xmax - layout.xmin) * (right - left);
+      const py = value => bottom - (value / ymax) * (bottom - top);
+      const svg = svgElement('svg', {viewBox: '0 0 ' + width + ' ' + height, role: 'img',
+        'data-x-min': layout.xmin, 'data-x-max': layout.xmax, 'data-bin-width': layout.width,
+        'aria-label': contextTitle + ' · ' + samples.map(s => s.label + ' n=' + s.values.length).join(', ')});
+      svg.append(svgElement('title', {}, contextTitle));
+      const ticks = (from, to, target) => {
+        const step = niceStep((to - from) / target);
+        const result = [];
+        for (let i = Math.ceil(from / step - 1e-9); i <= Math.floor(to / step + 1e-9); i++) {
+          result.push(Number((i * step).toPrecision(7)));
+        }
+        return result;
+      };
+      for (const y of ticks(0, ymax, 4)) {
+        if (y) svg.append(svgElement('line', {x1: left, x2: right, y1: py(y), y2: py(y), class: 'rd-gridline'}));
+        svg.append(svgElement('text', {x: left - 7, y: py(y) + 4, 'text-anchor': 'end', class: 'rd-tick'}, y));
+      }
+      for (const x of ticks(layout.xmin, layout.xmax, width < 470 ? 4 : 7)) {
+        svg.append(svgElement('text', {x: px(x), y: bottom + 17, 'text-anchor': 'middle', class: 'rd-tick'}, x));
+      }
+      for (const [i, estimate] of estimates.entries()) {
+        const hist = svgElement('g', {class: 'rd-bars rd-' + samples[i].color + (isGL ? ' rd-compared' : ''),
+          'data-gender': samples[i].gender, 'data-n': samples[i].values.length});
+        estimate.bars.forEach((density, k) => {
+          if (!density) return;
+          const x = layout.first + k * layout.width;
+          const rect = svgElement('rect', {x: px(x), y: py(density),
+            width: px(x + layout.width) - px(x), height: bottom - py(density),
+            'data-x-left': x, 'data-count': estimate.counts[k]});
+          rect.append(svgElement('title', {}, samples[i].label + ' · ' + Number(x.toFixed(2)) + '–' +
+            Number((x + layout.width).toFixed(2)) + ': ' + estimate.counts[k]));
+          hist.append(rect);
+        });
+        svg.append(hist);
+      }
+      for (const [i, estimate] of estimates.entries()) {
+        if (!estimate.peak) continue;
+        const seriesClass = ' rd-' + samples[i].color;
+        const line = pathFor(estimate.curve, px, py);
+        svg.append(svgElement('path', {d: line + 'L' + right + ' ' + bottom + 'L' + left + ' ' + bottom + 'Z',
+          class: 'rd-fill' + seriesClass}));
+        svg.append(svgElement('path', {d: line, class: 'rd-curve' + seriesClass}));
+        if (!isGL) {
+          const x = px(median ? estimate.median : estimate.peak[0]);
+          const y = median ? top + 8 : py(estimate.peak[1]);
+          svg.append(svgElement('line', {x1: x, x2: x, y1: y, y2: bottom, class: 'rd-marker'}));
+          if (!median) svg.append(svgElement('circle', {cx: x, cy: y, r: 2.5, class: 'rd-point' + seriesClass}));
+        }
+      }
+      svg.append(svgElement('path', {d: 'M' + left + ' ' + top + 'V' + bottom + 'H' + right, class: 'rd-axis'}));
+      svg.append(svgElement('text', {x: (left + right) / 2, y: height - 7, 'text-anchor': 'middle', class: 'rd-axis-label'}, xLabel));
+      const yCenter = (top + bottom) / 2;
+      svg.append(svgElement('text', {x: 13, y: yCenter, transform: 'rotate(-90 13 ' + yCenter + ')',
+        'text-anchor': 'middle', class: 'rd-axis-label'}, t('概率密度', 'Density')));
+      figure.replaceChildren(svg);
+    };
+  }
+
+  function selectField(label, name) {
+    const field = element('label', 'rd-field');
+    const select = element('select');
+    select.name = name;
+    field.append(element('span', '', label), select);
+    return {field, select};
+  }
+
+  function linkOrText(label, href) {
+    if (!href) return document.createTextNode(label);
+    const link = element('a', '', label);
+    link.href = href;
+    return link;
+  }
+
+  function render(container, options) {
+    const {records, discipline, language} = options;
+    const en = language === 'en', langIndex = en ? 1 : 0;
+    const t = (zh, eng) => en ? eng : zh;
+    const title = key => names[key][langIndex];
+    let state = preferences.get(container);
+    if (!state) {
+      state = {gender: 'M', classes: {M: '83', F: '63'}, metric: 'total'};
+      preferences.set(container, state);
+    }
+    state.observer?.disconnect();
+    if (state.resize) window.removeEventListener('resize', state.resize);
+    container.replaceChildren();
+    const benchOnly = discipline === 'B';
+    const eligible = records.filter(row => row.rankings_eligible === true && (row.gender === 'M' || row.gender === 'F'));
+    const raw = eligible.filter(row => (row.discipline || 'SBD') === (benchOnly ? 'B' : 'SBD'));
+    const metrics = benchOnly ? ['bench'] : ['squat', 'bench', 'deadlift', 'total'];
+    const groups = {M: new Map(), F: new Map()};
+    for (const row of eligible) {
+      const wc = groupClass(row);
+      if (wc && !groups[row.gender].has(wc)) groups[row.gender].set(wc, []);
+    }
+    for (const row of raw) {
+      const wc = groupClass(row);
+      if (!wc) continue;
+      groups[row.gender].get(wc).push(row);
+    }
+    const seed = [options.genderFilter || '', options.classFilter || ''].join('/');
+    if (state.seed !== seed || options.applyRankingSelection) {
+      const hintedGender = options.genderFilter;
+      const hintedClass = options.classFilter;
+      if (hintedGender === 'M' || hintedGender === 'F') state.gender = hintedGender;
+      if (hintedClass) {
+        const matches = ['M', 'F'].filter(g => groups[g].has(groupClass({gender: g, weight_class: hintedClass})));
+        if (!hintedGender && matches.length === 1) state.gender = matches[0];
+        const wc = groupClass({gender: state.gender, weight_class: hintedClass});
+        if (groups[state.gender].has(wc)) state.classes[state.gender] = wc;
+      }
+      state.seed = seed;
+    }
+
+    const section = (zh, english, description) => {
+      const pane = element('section', 'rd-section');
+      const header = element('div', 'rd-header');
+      header.append(element('h3', '', t(zh, english)), element('p', '', description));
+      pane.append(header);
+      container.append(pane);
+      return pane;
+    };
+    const recordsPane = section('全国纪录', 'National records', t('按本站收录的中国运动员各级别最高成绩统计。', 'Highest recorded mark in each weight class among Chinese athletes in this archive.'));
+    const fields = element('div', 'rd-filters');
+    const gender = selectField(t('性别', 'Gender'), 'record-gender');
+    const weightClass = selectField(t('体重级别', 'Weight class'), 'record-class');
+    for (const g of ['M', 'F']) gender.select.add(new Option(title(g), g));
+    gender.select.value = state.gender;
+    fields.append(gender.field, weightClass.field);
+    const tableWrap = element('div', 'rd-table-wrap');
+    recordsPane.append(fields, tableWrap);
+
+    const classPane = section('级别成绩分布', 'Weight-class distribution', t('每位运动员取该级别、该项目的个人最好成绩。', 'One personal best per athlete for the selected weight class and lift.'));
+    const classHead = element('div', 'rd-chart-heading');
+    const classTitle = element('h4');
+    classHead.append(classTitle);
+    const measure = selectField(t('成绩指标', 'Measure'), 'record-measure');
+    if (!benchOnly) {
+      for (const key of ['total', 'squat', 'bench', 'deadlift']) measure.select.add(new Option(title(key), key));
+      measure.select.value = state.metric;
+      classHead.append(measure.field);
+    }
+    const classChart = element('div', 'rd-figure');
+    classPane.append(classHead, classChart);
+    const glPane = section('GL系数分布', 'GL points distribution', t('每位运动员取本项目最高GL系数，男女分别按概率密度绘制。', 'One best GL score per athlete in this discipline. Densities are normalized separately for men and women.'));
+    const glChart = element('div', 'rd-figure');
+    glPane.append(glChart);
+    let drawClass = () => {};
+    const glSamples = ['M', 'F'].map(g => ({label: title(g), gender: g, color: g === 'M' ? 'blue' : 'orange',
+      values: bestByAthlete(raw.filter(row => row.gender === g), 'gl').map(row => row.gl)}));
+    const drawGL = chart(glChart, glSamples, {en, isGL: true, xLabel: title('gl'), contextTitle: t('GL系数分布', 'GL points distribution')});
+
+    function showClass(refreshTable) {
+      const g = gender.select.value;
+      const wc = weightClass.select.value;
+      const rows = groups[g].get(wc) || [];
+      const metric = benchOnly ? 'bench' : measure.select.value;
+      if (refreshTable) {
+        tableWrap.replaceChildren();
+        const table = element('table', 'rd-table');
+        const caption = element('caption', '', title(g) + ' · ' + (wc ? wc + ' kg' : '—'));
+        const head = element('thead');
+        const columnRow = element('tr');
+        const headings = [t('项目', 'Lift'), t('成绩', 'Mark'), t('运动员', 'Athlete'), t('赛事', 'Meet')];
+        for (const label of headings) {
+          const th = element('th', '', label);
+          th.scope = 'col';
+          columnRow.append(th);
+        }
+        head.append(columnRow);
+        const body = element('tbody');
+        for (const key of metrics) {
+          const best = bestByAthlete(rows, key);
+          const max = best.reduce((value, row) => Math.max(value, row[key]), 0);
+          const holders = best.filter(row => row[key] === max).sort((a, b) =>
+            (a.bodyweight ?? Infinity) - (b.bodyweight ?? Infinity) || a.name.localeCompare(b.name));
+          for (const [i, row] of (holders.length ? holders : [null]).entries()) {
+            const tr = element('tr');
+            Object.assign(tr.dataset, {gender: g, class: wc, metric: key});
+            if (row) tr.dataset.recordId = row.record_id;
+            const lift = element('th', '', title(key));
+            lift.scope = 'row';
+            const mark = element('td', 'rd-mark', row ? String(row[key]) : '—');
+            if (row) mark.append(element('small', '', ' kg'));
+            const person = element('td', 'rd-person');
+            const event = element('td', 'rd-event');
+            if (row) {
+              person.append(linkOrText(options.athleteName?.(row) || row.name, options.athleteHref?.(row)));
+              event.append(linkOrText(options.meetName?.(row) || (en ? row.meet_name_en : row.meet_name), options.meetHref?.(row)));
+              event.append(element('small', '', row.meet_date || String(row.year)));
+            } else { person.textContent = event.textContent = '—'; }
+            if (i) tr.classList.add('rd-tied');
+            tr.append(lift, mark, person, event);
+            body.append(tr);
+          }
+        }
+        table.append(caption, head, body);
+        tableWrap.append(table);
+        if ((g === 'F' && wc === '47') || (g === 'M' && wc === '59')) {
+          tableWrap.append(element('p', 'rd-group-note', g === 'F' ? t('含女子43 kg级成绩。', 'Includes the women’s 43 kg class.')
+            : t('含男子53 kg级成绩。', 'Includes the men’s 53 kg class.')));
+        }
+      }
+      classTitle.textContent = [title(g), wc ? wc + ' kg' : '', title(metric)].filter(Boolean).join(' · ');
+      const samples = [{label: title(metric), gender: g, color: 'blue', values: bestByAthlete(rows, metric).map(row => row[metric])}];
+      drawClass = chart(classChart, samples, {en, isGL: false, xLabel: title(metric) + ' (kg)',
+        median: g === 'F' && metric === 'total' && ['69', '76', '84'].includes(wc), refineBandwidth: metric === 'total',
+        contextTitle: classTitle.textContent});
+      drawClass();
+    }
+
+    function changeGender() {
+      const g = gender.select.value;
+      state.gender = g;
+      const classes = [...groups[g].keys()].sort(compareClasses);
+      weightClass.select.replaceChildren(...classes.map(wc => new Option(wc + ' kg', wc)));
+      if (classes.includes(state.classes[g])) weightClass.select.value = state.classes[g];
+      weightClass.select.disabled = !classes.length;
+      showClass(true);
+    }
+    gender.select.addEventListener('change', changeGender);
+    weightClass.select.addEventListener('change', () => {
+      state.classes[state.gender] = weightClass.select.value;
+      showClass(true);
+    });
+    measure.select.addEventListener('change', () => {
+      state.metric = measure.select.value;
+      showClass(false);
+    });
+    changeGender();
+    state.resize = () => { drawClass(); drawGL(); };
+    state.resize();
+    if (typeof ResizeObserver === 'function') {
+      state.observer = new ResizeObserver(state.resize);
+      state.observer.observe(container);
+    } else {
+      window.addEventListener('resize', state.resize);
+    }
+  }
+
+  window.IPFcnRecords = {render};
+})();
+</script>
   <script>'use strict';
 
+// An owner can replace the public CSV on GitHub Pages. A private preview uses
+// the same parser and record IDs, so it can be checked before publication.
 (() => {
+  const columns = ['成绩ID', '运动员ID', '姓名', '拼音或排序名', '其他姓名', '性别', '年份', '赛事类别',
+    '代表队', '纳入总榜', '赛事名称', '赛事英文名', '赛事ID', '赛事首日', '赛事末日', '比赛日期或赛期首日',
+    '赛期末日', '报名年龄组', '榜单级别(kg)', '名次所属级别(kg)', '名次所属组别', '级别名次',
+    '各组别名次', '名次依据', '体重(kg)', '蹲举(kg)', '卧推举(kg)', '硬举(kg)', '总成绩(kg)', 'IPF GL系数', '比赛项目', '装备类别'];
+  const csvPath = 'IPFcn-results.csv';
+  const storageKey = 'ipfcn.importPreview';
+  const baseHash = '7b938a03934d1a83906fd90b1df61fb60060b1f0832801b4bb4511260c2ce812';
+  const basis = new Map([['赛事成绩表', 'official'], ['来宾，无正式名次', 'guest'],
+    ['同场同性别、同年龄组与同体重级别的三项总成绩', 'computed_age_weight_class'],
+    ['同场同性别、同年龄组与同体重级别的卧推举成绩', 'computed_bench_class'], ['', 'unknown']]);
+  const coefficient = {
+    SBD: {M: [1199.72839, 1025.18162, .00921], F: [610.32796, 1045.59282, .03048]},
+    B: {M: [320.98041, 281.40258, .01008], F: [142.40398, 442.52671, .04724]}
+  };
+  let publishedCSV = null, baseTable = null, preview = null, publicRows = [], sourceError = false;
+  const bilingualError = (zh, en) => Object.assign(new Error(zh), {en});
+
+  function cells(text) {
+    const input = text.replace(/^\uFEFF/, '');
+    const lines = [];
+    let row = [], value = '', quoted = false, closed = false;
+    function finishCell() { row.push(value); value = ''; closed = false; }
+    function endRow() {
+      finishCell();
+      if (row.some(v => v.length)) lines.push(row);
+      row = [];
+    }
+    for (let i = 0; i < input.length; i++) {
+      const c = input[i];
+      if (quoted) {
+        if (c !== '"') value += c;
+        else if (input[i + 1] === '"') { value += '"'; i++; }
+        else { quoted = false; closed = true; }
+      } else if (c === ',') finishCell();
+      else if (c === '\r' || c === '\n') {
+        if (c === '\r' && input[i + 1] === '\n') i++;
+        endRow();
+      } else if (c === '"' && !value && !closed) quoted = true;
+      else if (c === '"' || closed) throw bilingualError('CSV 引号格式有误。', 'Invalid CSV quoting.');
+      else value += c;
+    }
+    if (quoted) throw bilingualError('CSV 引号未闭合。', 'Unclosed CSV quote.');
+    endRow();
+    return lines;
+  }
+
+  function sheet(text) {
+    const [head, ...lines] = cells(text);
+    if (!head || new Set(head).size !== head.length || columns.some(k => !head.includes(k))) {
+      throw bilingualError('请使用本站下载的 CSV 表头。', 'Use the headers in the website’s downloadable CSV.');
+    }
+    if (!lines.length) throw bilingualError('没有成绩行。', 'The file has no results.');
+    const seen = new Set();
+    return lines.map((line, index) => {
+      if (line.length !== head.length) throw bilingualError('第 ' + (index + 2) + ' 行列数有误。', 'Wrong column count in row ' + (index + 2) + '.');
+      const entry = Object.fromEntries(head.map((k, i) => [k, line[i].trim()]));
+      const id = entry['成绩ID'];
+      if (!id || seen.has(id)) throw bilingualError('第 ' + (index + 2) + ' 行成绩 ID 缺失或重复。', 'Missing or duplicate result ID in row ' + (index + 2) + '.');
+      seen.add(id);
+      return entry;
+    });
+  }
+
+  function record(c, i, previous) {
+    const bad = field => { throw bilingualError('第 ' + (i + 2) + ' 行请核对「' + field + '」。', 'Check row ' + (i + 2) + ' (' + field + ').'); };
+    function number(field, required = true) {
+      if (!c[field] && !required) return null;
+      const n = Number(c[field]);
+      if (!Number.isFinite(n) || n <= 0) bad(field);
+      return n;
+    }
+    for (const field of ['姓名','运动员ID','赛事ID','赛事名称','年份','比赛项目','性别']) if (!c[field]) bad(field);
+    if (['张延飞', '王佳鑫'].includes(c['姓名'])) bad('姓名');
+    if (!['男', '女'].includes(c['性别']) || !['国内赛','国际赛'].includes(c['赛事类别']) ||
+        !['是','否'].includes(c['纳入总榜']) || c['装备类别'] !== '经典' ||
+        !['力量举三项','卧推举单项'].includes(c['比赛项目'])) bad('性别 / 赛事类别 / 比赛项目 / 装备类别');
+    const gender = c['性别'] === '男' ? 'M' : 'F';
+    const discipline = c['比赛项目'] === '力量举三项' ? 'SBD' : 'B';
+    const international = c['赛事类别'] === '国际赛', team = c['代表队'];
+    const eligible = c['纳入总榜'] === '是';
+    if (international && (!team || (eligible && !['chn', 'china', '中国'].includes(team.toLowerCase())))) bad('代表队 / 纳入总榜');
+    const year = Number(c['年份']);
+    if (!/^\d{4}$/.test(c['年份']) || year < 2020) bad('年份');
+    const isDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(Date.parse(d)) && new Date(d).toISOString().slice(0, 10) === d;
+    const dates = ['赛事首日','赛事末日','比赛日期或赛期首日','赛期末日'];
+    for (const field of dates) if (c[field] && !isDate(c[field])) bad(field);
+    const start = c['赛事首日'] || String(year), end = c['赛事末日'] || start;
+    if (!start.startsWith(String(year)) || end < start) bad('赛事首日 / 赛事末日');
+    let weightClass = c['榜单级别(kg)'];
+    const actualClass = c['名次所属级别(kg)'] || weightClass;
+    if (![weightClass, actualClass].every(v => /^[1-9]\d*(?:\.\d+)?\+?$/.test(v))) bad('级别');
+    if (gender === 'M' && actualClass === '53') weightClass = '59';
+    if (gender === 'F' && actualClass === '43') weightClass = '47';
+    c['榜单级别(kg)'] = weightClass;
+    c['名次所属级别(kg)'] = actualClass;
+    const squat = number('蹲举(kg)', discipline === 'SBD'), bench = number('卧推举(kg)');
+    const deadlift = number('硬举(kg)', discipline === 'SBD'), total = number('总成绩(kg)', discipline === 'SBD');
+    if ((discipline === 'SBD' && Math.abs(squat + bench + deadlift - total) > .011) ||
+        (discipline === 'B' && [squat, deadlift, total].some(v => v !== null))) bad('三项 / 卧推举单项');
+    const bw = number('体重(kg)', false);
+    let gl = number('IPF GL系数', false);
+    if (gl == null && bw) {
+      const [a,b,k] = coefficient[discipline][gender];
+      const result = 100 * (discipline === 'B' ? bench : total) / (a - b * Math.exp(-k * bw));
+      if (result > 0 && Number.isFinite(result)) {
+        gl = Math.round(result * 100) / 100;
+        c['IPF GL系数'] = gl.toFixed(2);
+      } else bad('体重(kg)');
+    }
+    if (eligible && (!bw || !gl)) bad('体重(kg) / IPF GL系数');
+    const classPlace = number('级别名次', false);
+    if (classPlace && !Number.isInteger(classPlace)) bad('级别名次');
+    if (!basis.has(c['名次依据'])) bad('名次依据');
+    const places = c['各组别名次'] ? c['各组别名次'].split(/[;；]/).map(value => {
+      const match = /^(.+?)\s+第([1-9]\d*)名$/.exec(value.trim());
+      if (!match) bad('各组别名次');
+      return {division: match[1], place: Number(match[2])};
+    }) : [];
+    const title = c['赛事名称'], titleEN = c['赛事英文名'] || title;
+    const sameAthlete = previous?.athlete_id === c['运动员ID'] && previous.name === c['姓名'];
+    return {
+      record_id:c['成绩ID'], athlete_id:c['运动员ID'], name:c['姓名'], name_sort:c['拼音或排序名'] || c['姓名'],
+      name_en:sameAthlete ? previous.name_en : undefined, alternate_names:c['其他姓名'].split(' / ').filter(Boolean),
+      gender, year, discipline, equipment:'Raw', weight_class:weightClass, placement_weight_class:actualClass,
+      bodyweight:bw, squat, bench, deadlift, total, gl, meet_type:international ? 'international':'domestic',
+      rankings_eligible:eligible, team, meet_id:c['赛事ID'], meet_name:title, meet_name_en:titleEN,
+      published_titles:{zh:title,en:titleEN}, meet_start:start, meet_end:end, meet_date:c['比赛日期或赛期首日'] || start,
+      meet_end_date:c['赛期末日'] || undefined, date_precision:start.length === 4 ? 'year' : undefined,
+      age_division:c['报名年龄组'], division:c['名次所属组别'], class_place:classPlace,
+      class_places:places, place_basis:basis.get(c['名次依据'])
+    };
+  }
+
+  function merge(original, additions, key) {
+    const values = new Map(original.map(row => [row[key], row]));
+    for (const row of additions) values.set(row[key], row);
+    return [...values.values()];
+  }
+  function decode(entries, original) {
+    const previous = new Map(original.map(row => [row.record_id, row]));
+    return entries.map((c,i) => record(c,i,previous.get(c['成绩ID'])));
+  }
+  function encode(entries) {
+    const esc = value => /[",\n\r]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
+    return '\uFEFF' + [columns, ...entries.map(c => columns.map(key => c[key] ?? ''))]
+      .map(line => line.map(esc).join(',')).join('\r\n') + '\r\n';
+  }
+
+  async function published(original) {
+    publicRows = original;
+    if (/^https?:$/.test(location.protocol)) {
+      const timeout = new AbortController(), timer = setTimeout(() => timeout.abort(), 12000);
+      try {
+        const response = await fetch(csvPath, {cache:'no-cache', signal:timeout.signal});
+        if (!response.ok) throw new Error('CSV unavailable');
+        const bytes = await response.arrayBuffer();
+        let same = false;
+        if (globalThis.crypto?.subtle) {
+          const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+          same = Array.from(hash, v => v.toString(16).padStart(2, '0')).join('') === baseHash;
+        }
+        const csvText = new TextDecoder('utf-8', {fatal:true}).decode(bytes);
+        if (!same) {
+          const entries = sheet(csvText);
+          publicRows = decode(entries, original);
+          baseTable = entries;
+        }
+        publishedCSV = csvText;
+      } catch { sourceError = true; }
+      finally { clearTimeout(timer); }
+    }
+    try {
+      const saved = sessionStorage.getItem(storageKey);
+      if (saved) {
+        const value = JSON.parse(saved);
+        const rows = decode(sheet(value.text), publicRows);
+        preview = value;
+        return merge(publicRows, rows, 'record_id');
+      }
+    } catch { try { sessionStorage.removeItem(storageKey); } catch {} }
+    return publicRows;
+  }
+
+  function mount(container, {records, language}) {
+    const en = language === 'en';
+    const tr = (a,b) => en ? b : a;
+    const node = (tag, label) => {
+      const item = document.createElement(tag);
+      if (label !== undefined) item.textContent = label;
+      return item;
+    };
+    const box = node('details');
+    box.className = 'dataset-tools';
+    box.append(node('summary', tr(preview ? '数据更新 · 预览中' : '数据更新', preview ? 'Data updates · Preview' : 'Data updates')));
+    const body = node('div'); body.className = 'dataset-body';
+    if (sourceError) body.append(node('p', tr('公开 CSV 暂未载入，当前显示随网页发布的数据。', 'The public CSV could not be loaded. Showing the bundled results.')));
+    body.append(node('p', tr('使用本站 CSV 格式。相同成绩 ID 覆盖原记录，新 ID 追加。', 'Use the site’s CSV format. Matching result IDs are replaced; new IDs are added.')));
+    const input = node('input'); input.type = 'file'; input.accept = '.csv,text/csv'; input.className = 'sr-only';
+    const upload = node('button', tr('导入 CSV 预览', 'Import CSV preview')); upload.type = 'button';
+    upload.onclick = () => input.click();
+    const status = node('p'); status.className = 'dataset-status'; status.setAttribute('role','status');
+    if (preview) status.textContent = tr('当前标签页正在预览 ', 'Preview in this tab: ') + preview.name;
+    input.onchange = async () => {
+      if (!input.files?.length) return;
+      upload.disabled = true;
+      try {
+        const file = input.files[0], entries = sheet(await file.text());
+        decode(entries, publicRows);
+        const previous = preview ? sheet(preview.text) : [];
+        const text = encode(merge(previous, entries, '成绩ID'));
+        try { sessionStorage.setItem(storageKey, JSON.stringify({name:file.name, text})); }
+        catch { throw bilingualError('浏览器存储空间不足，无法保存预览。', 'Browser storage is unavailable for this preview.'); }
+        location.reload();
+      } catch (e) {
+        status.textContent = (en ? e.en : e.message) || tr('无法读取文件。', 'Could not read this file.');
+        input.value = '';
+        upload.disabled = false;
+      }
+    };
+    const reference = node('a', tr('下载当前数据', 'Download current data')); reference.href = csvPath;
+    reference.download = 'IPFcn-results.csv';
+    const actions = node('div'); actions.className = 'dataset-actions'; actions.append(upload,reference,input);
+    if (preview) {
+      const clear = node('button', tr('退出预览', 'Exit preview')); clear.type = 'button';
+      clear.onclick = () => { sessionStorage.removeItem(storageKey); location.reload(); };
+      actions.append(clear);
+      if (publishedCSV) {
+        const save = node('button', tr('下载合并数据', 'Download merged CSV')); save.type = 'button';
+        save.onclick = () => {
+          const merged = merge(baseTable || sheet(publishedCSV), sheet(preview.text), '成绩ID');
+          const url = URL.createObjectURL(new Blob([encode(merged)], {type:'text/csv;charset=utf-8'}));
+          const link = node('a'); link.href = url; link.download = 'IPFcn-results.csv';
+          body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+        };
+        actions.append(save);
+      }
+    }
+    const hint = node('p', tr('公开更新时，将合并后的 IPFcn-results.csv 上传到网站仓库。', 'To publish, upload the merged IPFcn-results.csv to the site repository.'));
+    const publish = node('a', tr('上传至 GitHub', 'Upload to GitHub'));
+    publish.href = 'https://github.com/EisblumeKs/ipfcn_result/upload/main'; publish.target = '_blank'; publish.rel = 'noopener';
+    hint.append(' ', publish);
+    body.append(actions, status, hint); box.append(body); container.replaceChildren(box);
+    return records;
+  }
+  globalThis.IPFcnDataset = {published, mount};
+})();
+
+</script>
+  <script>'use strict';
+
+(async () => {
   const root = document.documentElement;
   const languageSelect = document.getElementById('language-select');
   let language = root.lang === 'en' ? 'en' : 'zh';
   const tr = (zh, en) => language === 'en' ? en : zh;
   const displayNames = JSON.parse(document.getElementById('display-names').textContent);
-  const meetTitle = (row, locale = language) => displayNames.meets[row.meet_id][locale];
-  const athleteName = (row, locale = language) => locale === 'en' ? displayNames.athletes[row.athlete_id] || row.name : row.name;
+  const meetTitle = (row, locale = language) => (!row.published_titles && displayNames.meets[row.meet_id]?.[locale]) ||
+    (locale === 'en' ? row.meet_name_en || row.meet_name : row.meet_name);
+  const athleteName = (row, locale = language) => locale === 'en' ? row.name_en || displayNames.athletes[row.athlete_id] || row.name : row.name;
   const translations = [];
   for (const attribute of ['', 'placeholder', 'aria-label', 'title']) {
     const key = 'data-i18n-en' + (attribute ? '-' + attribute : '');
@@ -938,9 +1856,18 @@ globalThis.liftPlacings = liftPlacings;
     languageSelect.value = language;
     translations.forEach(apply => apply());
   }
-  const allRecords = JSON.parse(document.getElementById('records').textContent);
-  const data = allRecords.filter(row => row.rankings_eligible);
-  const filters = {years: [], genders: [], classes: [], meetTypes: [], discipline: 'SBD', disciplineVisible: false, sort: 'gl'};
+  const bundledRecords = JSON.parse(document.getElementById('records').textContent);
+  const allRecords = window.IPFcnDataset ? await window.IPFcnDataset.published(bundledRecords) : bundledRecords;
+  function overallClass(gender, weightClass) {
+    if (gender === 'M' && weightClass === '53') return '59';
+    if (gender === 'F' && weightClass === '43') return '47';
+    return weightClass;
+  }
+  const data = allRecords.filter(row => row.rankings_eligible).map(row => {
+    const weightClass = overallClass(row.gender, row.weight_class);
+    return weightClass === row.weight_class ? row : {...row, weight_class: weightClass};
+  });
+  const filters = {years: [], genders: [], classes: [], meetTypes: [], discipline: 'SBD', sort: 'gl'};
   // Only a manual gender choice narrows the options in the weight-class menu.
   const sections = document.getElementById('rankings');
   const form = document.querySelector('.filters');
@@ -949,6 +1876,11 @@ globalThis.liftPlacings = liftPlacings;
   const archiveRecords = document.getElementById('athlete-records');
   const rankingTitle = document.getElementById('page-heading').textContent;
   const rankingSubtitle = document.getElementById('page-subtitle').textContent;
+  const recordsView = document.getElementById('records-view');
+  const recordsContent = document.getElementById('records-content');
+  const recordsSelect = document.getElementById('records-discipline');
+  const projectNav = document.querySelector('.project-nav');
+  const modeBlock = document.querySelector('.mast-mode');
   const archiveTitle = 'IPFcn运动员成绩档案';
   const archiveSubtitle = 'IPFcn ATHLETE RESULTS ARCHIVE';
   const meetNames = {domestic: '国内赛', international: '国际赛'};
@@ -1023,7 +1955,8 @@ globalThis.liftPlacings = liftPlacings;
   const searchIndex = [...byAthlete].map(([id, results]) => {
     const record = results[0];
     const names = new Set();
-    for (const name of [record.name, record.name_sort, athleteName(record, 'en'), ...(searchAliases[id] || [])]) {
+    const aliases = results.flatMap(row => row.alternate_names || []);
+    for (const name of [record.name, record.name_sort, athleteName(record, 'en'), ...(searchAliases[id] || []), ...aliases].filter(Boolean)) {
       names.add(searchKey(name));
       const parts = name.trim().split(/\s+/);
       if (parts.length > 1) names.add(searchKey([...parts.slice(1), parts[0]].join('')));
@@ -1090,8 +2023,8 @@ globalThis.liftPlacings = liftPlacings;
   }
   const meetSelect = document.getElementById('meet-select');
   function refreshMeetSelect() {
-    const meets = meetsNewestFirst.filter(row => meetsHomeScope(row) && (!filters.disciplineVisible ||
-      byMeet.get(row.meet_id).some(result => resultDiscipline(result) === filters.discipline)));
+    const meets = meetsNewestFirst.filter(row => meetsHomeScope(row) &&
+      byMeet.get(row.meet_id).some(result => resultDiscipline(result) === filters.discipline));
     const emptyLabel = filters.meetTypes.length === 1 ? tr('当前筛选条件下暂无赛事', 'No competitions match these filters')
       : tr('所选年份暂无赛事', 'No competitions for the selected years');
     const empty = element('option', meets.length ? tr('选择赛事', 'Select a competition') : emptyLabel);
@@ -1289,28 +2222,15 @@ globalThis.liftPlacings = liftPlacings;
     const sortField = form.querySelector('.sort-field select');
     const classMetricField = form.querySelector('.class-metric-field');
     const classMetric = classMetricField.querySelector('select');
-    const disciplineSelect = form.querySelector('.discipline-field select');
-    const inMeet = form === meetForm;
-    function setOptions(select, values, name, selected) {
-      select.replaceChildren(...values.map(value => new Option(name(value), value)));
-      select.value = selected;
-    }
     function syncDiscipline() {
-      const rows = scopedRecords();
-      const visible = inMeet ? rows.some(row => resultDiscipline(row) === 'B') : filters.disciplineVisible;
-      const scope = chooseDiscipline(visible ? rows : [], filters.discipline);
-      filters.discipline = scope.discipline;
-      disciplineSelect.closest('label').hidden = !visible;
-      setOptions(disciplineSelect, scope.disciplines, disciplineName, scope.discipline);
-      if (!inMeet) {
-        panel.classesByGender = initialClasses;
-        if (visible) {
-          const appearing = rows.filter(row => row.rankings_eligible && resultDiscipline(row) === scope.discipline);
-          panel.classesByGender = new Map(limits.genders.map(gender => [gender, limits.classes.filter(
-            value => appearing.some(row => row.gender === gender && row.weight_class === value))]));
-        }
+      if (form !== meetForm) {
+        const appearing = scopedRecords().filter(row => resultDiscipline(row) === filters.discipline);
+        panel.classesByGender = new Map(limits.genders.map(gender => {
+          const used = new Set(appearing.filter(row => row.gender === gender).map(row => row.weight_class));
+          return [gender, limits.classes.filter(value => used.has(value))];
+        }));
       }
-      if (scope.discipline === 'B' && filters.sort !== 'gl') filters.sort = 'classBench';
+      if (filters.discipline === 'B' && filters.sort !== 'gl') filters.sort = 'classBench';
     }
     function syncSort() {
       const byClass = isClassSort(filters.sort);
@@ -1365,7 +2285,6 @@ globalThis.liftPlacings = liftPlacings;
             syncFilters();
           } else {
             filters[key] = selection;
-            if (key === 'meetTypes') filters.disciplineVisible = true;
             if (key === 'meetTypes' || key === 'years') {
               syncFilters();
               filters.genders = gendersForClasses();
@@ -1400,14 +2319,6 @@ globalThis.liftPlacings = liftPlacings;
       classMetric.addEventListener('change', () => {
         filters.sort = classSortByMetric[classMetric.value];
         changed();
-      });
-      disciplineSelect.addEventListener('change', () => {
-        filters.discipline = disciplineSelect.value;
-        if (filters.sort !== 'gl') filters.sort = 'total';
-        syncFilters();
-        filters.genders = gendersForClasses();
-        updateFilter(form.querySelector('[data-key=genders]'), filters);
-        changed(true);
       });
     }
     panel.sync = syncFilters;
@@ -1637,7 +2548,6 @@ globalThis.liftPlacings = liftPlacings;
       reset.addEventListener('click', () => {
         rankingPanel.manualGenders = [];
         for (const key of Object.keys(limits)) filters[key] = [];
-        Object.assign(filters, {disciplineVisible: false, discipline: 'SBD'});
         rankingPanel.sync(); listAll.clear(); render(); form.querySelector('summary').focus();
       });
       empty.append(reset); fragment.append(empty);
@@ -1832,7 +2742,7 @@ globalThis.liftPlacings = liftPlacings;
   }
   function setBackLink(link, hash, label, english) {
     link.href = hash || '#';
-    const destinations = {'RANKINGS': 'rankings', 'ATHLETE ARCHIVE': 'athlete profile', 'MEET RESULTS': 'meet results'};
+    const destinations = {'RECORDS & DISTRIBUTIONS': 'records and distributions', 'RANKINGS': 'rankings', 'ATHLETE ARCHIVE': 'athlete profile', 'MEET RESULTS': 'meet results'};
     link.replaceChildren(document.createTextNode('← ' + tr(label, 'Back to ' + destinations[english]) + ' '));
     if (language === 'zh') link.append(element('small', english));
   }
@@ -1844,7 +2754,9 @@ globalThis.liftPlacings = liftPlacings;
     rankingView.hidden = true; athleteView.hidden = true; meetView.hidden = false;
     meetForm.hidden = !rows;
     const origin = history.state?.meetOrigin;
-    setBackLink(meetBack, origin, origin ? '返回运动员档案' : '返回排行榜', origin ? 'ATHLETE ARCHIVE' : 'RANKINGS');
+    const fromRecords = history.state?.fromRecords;
+    setBackLink(meetBack, origin || fromRecords, origin ? '返回运动员档案' : fromRecords ? '返回纪录与分布' : '返回排行榜',
+      origin ? 'ATHLETE ARCHIVE' : fromRecords ? 'RECORDS & DISTRIBUTIONS' : 'RANKINGS');
     if (!rows) {
       currentMeet = null;
       heading.textContent = tr('未找到该赛事', 'Competition not found'); sub.textContent = 'COMPETITION RESULTS';
@@ -1892,7 +2804,102 @@ globalThis.liftPlacings = liftPlacings;
     const heading = document.getElementById('page-heading');
     heading.tabIndex = -1; heading.focus({preventScroll: true});
   }
-  function showRoute(translating = false) {
+  const homeHref = discipline => discipline === 'B' ? '#discipline=B' : '#';
+  const recordsHref = discipline => discipline === 'B' ? '#records&discipline=B' : '#records';
+  function meetProjectHref(discipline) {
+    const params = new URLSearchParams(meetHash(selectedAthlete).slice(1));
+    if (discipline === 'B') params.set('discipline', 'B'); else params.delete('discipline');
+    if (meetFilters.sort !== 'gl' && meetFilters.discipline !== discipline) {
+      params.set('sort', discipline === 'B' ? 'classBench' : 'total');
+    }
+    if (selectedAthlete && !byMeet.get(currentMeet.id).some(row =>
+      athleteKey(row) === selectedAthlete && resultDiscipline(row) === discipline)) params.delete('athlete');
+    return '#' + params;
+  }
+  function syncNavigation(view, discipline) {
+    const isMeet = view === 'meet' && !!currentMeet;
+    for (const link of projectNav.querySelectorAll('a')) {
+      const project = link.dataset.project;
+      const active = project ? (view === 'home' || isMeet) && project === discipline : view === 'records';
+      const available = !project || !isMeet || byMeet.get(currentMeet.id).some(row => resultDiscipline(row) === project);
+      if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+      if (available) {
+        link.href = project ? isMeet ? meetProjectHref(project) : homeHref(project) : recordsHref(discipline);
+        link.removeAttribute('aria-disabled');
+      } else {
+        link.removeAttribute('href'); link.setAttribute('aria-disabled', 'true');
+      }
+    }
+  }
+  function saveRecordsPosition(link) {
+    history.replaceState({...history.state, recordsPosition: {scrollY: window.scrollY, href: link?.hash || ''}}, '');
+  }
+  projectNav.addEventListener('click', event => {
+    const link = event.target.closest('a');
+    if (!link || !link.hasAttribute('href') || !plainClick(event)) return;
+    event.preventDefault();
+    if (link.getAttribute('aria-current') === 'page') return;
+    const fromHome = !rankingView.hidden;
+    if (fromHome) saveRankingPosition(null, link.id);
+    if (!recordsView.hidden) saveRecordsPosition();
+    if (!meetView.hidden && currentMeet && link.dataset.project) {
+      history.replaceState({...history.state, meetPosition: null}, '', link.href);
+    } else {
+      history.pushState(null, '', link.href);
+    }
+    showRoute(false, fromHome && link.id === 'nav-records');
+  });
+
+  let chartState = null;
+  function showRecords(hash, translating, applyRankingSelection) {
+    rankingView.hidden = true; athleteView.hidden = true; meetView.hidden = true;
+    const discipline = hash.get('discipline') === 'B' ? 'B' : 'SBD';
+    recordsSelect.value = discipline;
+    syncNavigation('records', discipline);
+    const title = tr('纪录与分布', 'Records & Distributions');
+    document.getElementById('page-heading').textContent = title;
+    document.getElementById('page-subtitle').textContent = 'RECORDS & DISTRIBUTIONS';
+    document.title = title + ' · IPFcn';
+    const originalRows = allRecords;
+    const renderCharts = rows => {
+      if (recordsView.hidden || recordsSelect.value !== discipline) return;
+      if (!applyRankingSelection && chartState?.rows === rows && chartState.discipline === discipline && chartState.language === language) return;
+      window.IPFcnRecords.render(recordsContent, {
+        records: rows, language, discipline, athleteName, applyRankingSelection,
+        meetName: meetTitle,
+        athleteHref: r => byAthlete.has(athleteKey(r)) ? '#athlete=' + encodeURIComponent(athleteKey(r)) : null,
+        meetHref: r => byMeet.has(r.meet_id) ? '#' + new URLSearchParams(
+          resultDiscipline(r) === 'B' ? {meet:r.meet_id, discipline:'B'} : {meet:r.meet_id}) : null,
+        genderFilter: filters.genders.length === 1 ? filters.genders[0] : '',
+        classFilter: filters.classes.length === 1 ? filters.classes[0] : ''
+      });
+      chartState = {rows, language, discipline};
+    };
+    const updated = window.IPFcnDataset?.mount(recordsView.querySelector('[data-records-update]'),
+      {records: originalRows, language, onChange: renderCharts});
+    renderCharts(updated || originalRows);
+    if (translating) return;
+    const position = history.state?.recordsPosition;
+    const link = position?.href && [...recordsContent.querySelectorAll('a[href]')].find(a => a.hash === position.href);
+    if (link) link.focus({preventScroll: true}); else focusHeading();
+    window.scrollTo(0, position?.scrollY || 0);
+  }
+  recordsSelect.addEventListener('change', () => {
+    saveRecordsPosition();
+    history.pushState(null, '', recordsHref(recordsSelect.value));
+    showRoute();
+    recordsSelect.focus({preventScroll: true});
+  });
+  recordsContent.addEventListener('click', event => {
+    const link = event.target.closest('a[href]');
+    if (!link || !plainClick(event) || !/^#(athlete|meet)=/.test(link.getAttribute('href'))) return;
+    event.preventDefault();
+    saveRecordsPosition(link);
+    history.pushState({fromRecords: location.hash}, '', link.href);
+    showRoute();
+  });
+
+  function showRoute(translating = false, applyRankingSelection = false) {
     const hash = new URLSearchParams(location.hash.slice(1));
     const previous = hash.get('athlete');
     if (previous && Object.hasOwn(displayNames.previousAthleteIds, previous)) {
@@ -1900,13 +2907,24 @@ globalThis.liftPlacings = liftPlacings;
       history.replaceState(history.state, '', '#' + hash.toString());
     }
     siteSearch.close(); meetSearch.close();
-    if (hash.has('meet')) { showMeet(hash, translating); return; }
+    recordsView.hidden = !hash.has('records');
+    modeBlock.hidden = !recordsView.hidden;
+    if (!recordsView.hidden) { showRecords(hash, translating, applyRankingSelection); return; }
+    if (hash.has('meet')) {
+      showMeet(hash, translating);
+      syncNavigation('meet', meetFilters.discipline);
+      return;
+    }
     meetView.hidden = true;
     if (hash.has('athlete')) {
       rankingView.hidden = true;
       athleteView.hidden = false;
       const parent = history.state?.fromMeet;
-      setBackLink(archiveBack, parent, parent ? '返回本场比赛' : '返回排行榜', parent ? 'MEET RESULTS' : 'RANKINGS');
+      const fromRecords = history.state?.fromRecords;
+      setBackLink(archiveBack, parent || fromRecords, parent ? '返回本场比赛' : fromRecords ? '返回纪录与分布' : '返回排行榜',
+        parent ? 'MEET RESULTS' : fromRecords ? 'RECORDS & DISTRIBUTIONS' : 'RANKINGS');
+      const origin = new URLSearchParams((parent || fromRecords || '').replace(/^#/, ''));
+      syncNavigation('athlete', parent || fromRecords ? origin.get('discipline') || 'SBD' : filters.discipline);
       buildArchive(hash.get('athlete'));
       if (translating) return;
       const saved = history.state?.archivePosition;
@@ -1921,9 +2939,10 @@ globalThis.liftPlacings = liftPlacings;
       window.scrollTo(0, saved?.scrollY || 0);
       return;
     }
-    const saved = !translating && history.state?.ranking;
+    const saved = translating ? null : history.state?.ranking;
     if (saved) {
-      Object.assign(filters, {meetTypes: [], disciplineVisible: false, discipline: 'SBD'}, saved.filters);
+      Object.assign(filters, {meetTypes: [], discipline: 'SBD'}, saved.filters);
+      filters.classes = [...new Set(filters.classes.map(c => c === '43' ? '47' : c === '53' ? '59' : c))];
       filters.sort = restoreSort(filters.sort);
       rankingPanel.manualGenders = saved.manualGenders ?? saved.filters.genders;
       if (!saved.manualGenders) filters.genders = rankingPanel.gendersForClasses();
@@ -1931,6 +2950,13 @@ globalThis.liftPlacings = liftPlacings;
       saved.expanded.forEach(id => listAll.add(id));
       rankingPanel.sync();
     }
+    const project = hash.get('discipline') === 'B' || (!hash.has('discipline') && saved?.filters.discipline === 'B') ? 'B' : 'SBD';
+    if (filters.discipline !== project && filters.sort !== 'gl') filters.sort = 'total';
+    filters.discipline = project;
+    rankingPanel.sync();
+    filters.genders = rankingPanel.gendersForClasses();
+    updateFilter(form.querySelector('[data-key=genders]'), filters);
+    syncNavigation('home', project);
     document.getElementById('page-heading').textContent = tr(rankingTitle, 'IPFcn Competition Results');
     document.getElementById('page-subtitle').textContent = rankingSubtitle;
     document.title = tr(rankingTitle, 'IPFcn Competition Results');
@@ -1939,7 +2965,9 @@ globalThis.liftPlacings = liftPlacings;
     if (translating) return;
     if (saved) {
       sections.querySelectorAll('.table-scroll').forEach((region, i) => { region.scrollLeft = saved.scrollRegions[i] || 0; });
-      if (saved.focusControl === 'meet-select') {
+      if (saved.focusControl?.startsWith('nav-')) {
+        document.getElementById(saved.focusControl)?.focus({preventScroll: true});
+      } else if (saved.focusControl === 'meet-select') {
         searchInput.value = saved.search || '';
         meetSelect.value = '';
         meetSelect.focus({preventScroll: true});
@@ -1960,7 +2988,7 @@ globalThis.liftPlacings = liftPlacings;
   archiveBack.addEventListener('click', event => {
     if (!plainClick(event)) return;
     event.preventDefault();
-    if (history.state?.fromRankings || history.state?.fromMeet) { history.back(); return; }
+    if (history.state?.fromRankings || history.state?.fromMeet || history.state?.fromRecords) { history.back(); return; }
     history.replaceState(null, '', location.pathname + location.search);
     showRoute();
   });
@@ -1976,7 +3004,7 @@ globalThis.liftPlacings = liftPlacings;
     if (!plainClick(event)) return;
     if (currentMeet && selectedAthlete) { clearMeetAthlete(event); return; }
     event.preventDefault();
-    if (history.state?.meetOrigin || history.state?.fromRankings) { history.back(); return; }
+    if (history.state?.meetOrigin || history.state?.fromRankings || history.state?.fromRecords) { history.back(); return; }
     history.replaceState(null, '', location.pathname + location.search);
     showRoute();
   });
@@ -1989,18 +3017,12 @@ globalThis.liftPlacings = liftPlacings;
     }
     showRoute();
   });
-  const rankingPanel = setupFilterPanel(form, filters, limits, classesByGender, () => allRecords.filter(meetsHomeScope), () => { listAll.clear(); render(); });
-  const meetPanel = setupFilterPanel(meetForm, meetFilters, meetLimits, new Map(), () => byMeet.get(currentMeet?.id) || [], scopeChanged => {
-    if (scopeChanged) {
-      const available = byMeet.get(currentMeet.id).some(row => athleteKey(row) === selectedAthlete &&
-        resultDiscipline(row) === meetFilters.discipline);
-      history.replaceState({...history.state, meetPosition: null}, '', meetHash(available ? selectedAthlete : ''));
-      showRoute();
-      return;
-    }
+  const rankingPanel = setupFilterPanel(form, filters, limits, classesByGender, () => data.filter(meetsHomeScope), () => { listAll.clear(); render(); });
+  const meetPanel = setupFilterPanel(meetForm, meetFilters, meetLimits, new Map(), () => [], () => {
     history.replaceState({...history.state, meetPosition: null}, '', meetHash(selectedAthlete));
     if (selectedAthlete) setBackLink(meetBack, meetHash(), '返回本场比赛', 'MEET RESULTS');
     renderMeet();
+    syncNavigation('meet', meetFilters.discipline);
   });
   const homeEntries = [...homeAthletes, ...indexMeets()];
   const siteSearch = setupSearch(searchInput, searchMatches, searchStatus, () => homeEntries, row => createAthleteLink(row, true), true);
@@ -2018,7 +3040,7 @@ globalThis.liftPlacings = liftPlacings;
     url.searchParams.set('lang', language);
     history.replaceState(history.state, '', url);
     try { localStorage.setItem('ipfcn_result.language', language); } catch {}
-    const view = [rankingView, athleteView, meetView].find(node => !node.hidden);
+    const view = [rankingView, athleteView, meetView, recordsView].find(node => !node.hidden);
     const scrollY = window.scrollY;
     const offsets = [...view.querySelectorAll('.table-scroll')].map(node => node.scrollLeft);
     const siteMatchesOpen = !searchMatches.hidden;
@@ -2032,6 +3054,7 @@ globalThis.liftPlacings = liftPlacings;
     window.scrollTo(0, scrollY);
   });
   showRoute();
+  root.dataset.resultsReady = 'true';
   delete root.dataset.languagePending;
 })();
 </script>
