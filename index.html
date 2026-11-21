@@ -649,7 +649,6 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
 .project-nav a[aria-disabled="true"] { opacity: .55; }
 .records-tools { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 10px; margin-block: 0 16px; }
 .records-tools .discipline-field { min-width: 155px; }
-.records-tools [data-records-update] { min-width: 0; max-width: 100%; }
 .masthead .mast-mode[hidden] { display: none; }
 @media (min-width: 1101px) {
   .masthead { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: start; }
@@ -795,26 +794,6 @@ html[lang="en"] .rd-header h3 { font-family: var(--sans); }
   .rd-section { break-inside: avoid; }
   .rd-header, .rd-figure { print-color-adjust: exact; }
 }
-
-.dataset-tools { font-size: .875rem; }
-.dataset-tools > summary {
-  color: var(--text); padding: .5rem .65rem; cursor: pointer;
-  border: 1px solid var(--line); background: var(--header);
-}
-.dataset-body {
-  padding: .75rem 1rem; margin-top: .35rem; background: var(--header);
-  border: 1px solid var(--line); max-width: 35rem; line-height: 1.55; color: var(--muted);
-}
-.dataset-body p { margin: .45rem 0; }
-.dataset-body a { color: var(--text); text-underline-offset: .18rem; }
-.dataset-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .85rem; margin-block: .6rem; }
-.dataset-actions button {
-  color: var(--text); background: var(--group); border: 1px solid var(--line);
-  padding: .42rem .7rem; border-radius: 2px; cursor: pointer;
-}
-.dataset-status { color: var(--text); overflow-wrap: anywhere; }
-.dataset-status:empty { display: none; }
-[data-records-update] { min-width: 0; max-width: 100%; }
 </style>
   <script>
     (() => {
@@ -958,7 +937,6 @@ html[lang="en"] .rd-header h3 { font-family: var(--sans); }
         <label class="discipline-field" for="records-discipline"><span class="field-name"><span data-i18n-en="Discipline">比赛项目</span> <small lang="en">DISCIPLINE</small></span>
           <select id="records-discipline"><option value="SBD" data-i18n-en="Powerlifting">力量举三项</option><option value="B" data-i18n-en="Bench Press">卧推举单项</option></select>
         </label>
-        <div data-records-update></div>
       </div>
       <div id="records-content"></div>
     </section>
@@ -1577,15 +1555,13 @@ globalThis.liftPlacings = liftPlacings;
 </script>
   <script>'use strict';
 
-// An owner can replace the public CSV on GitHub Pages. A private preview uses
-// the same parser and record IDs, so it can be checked before publication.
+// The public site reads the results file published by the repository owner.
 (() => {
   const columns = ['成绩ID', '运动员ID', '姓名', '拼音或排序名', '其他姓名', '性别', '年份', '赛事类别',
     '代表队', '纳入总榜', '赛事名称', '赛事英文名', '赛事ID', '赛事首日', '赛事末日', '比赛日期或赛期首日',
     '赛期末日', '报名年龄组', '榜单级别(kg)', '名次所属级别(kg)', '名次所属组别', '级别名次',
     '各组别名次', '名次依据', '体重(kg)', '蹲举(kg)', '卧推举(kg)', '硬举(kg)', '总成绩(kg)', 'IPF GL系数', '比赛项目', '装备类别'];
   const csvPath = 'IPFcn-results.csv';
-  const storageKey = 'ipfcn.importPreview';
   const baseHash = '7b938a03934d1a83906fd90b1df61fb60060b1f0832801b4bb4511260c2ce812';
   const basis = new Map([['赛事成绩表', 'official'], ['来宾，无正式名次', 'guest'],
     ['同场同性别、同年龄组与同体重级别的三项总成绩', 'computed_age_weight_class'],
@@ -1594,7 +1570,6 @@ globalThis.liftPlacings = liftPlacings;
     SBD: {M: [1199.72839, 1025.18162, .00921], F: [610.32796, 1045.59282, .03048]},
     B: {M: [320.98041, 281.40258, .01008], F: [142.40398, 442.52671, .04724]}
   };
-  let publishedCSV = null, baseTable = null, preview = null, publicRows = [], sourceError = false;
   const bilingualError = (zh, en) => Object.assign(new Error(zh), {en});
 
   function cells(text) {
@@ -1713,120 +1688,31 @@ globalThis.liftPlacings = liftPlacings;
     };
   }
 
-  function merge(original, additions, key) {
-    const values = new Map(original.map(row => [row[key], row]));
-    for (const row of additions) values.set(row[key], row);
-    return [...values.values()];
-  }
-  function decode(entries, original) {
-    const previous = new Map(original.map(row => [row.record_id, row]));
-    return entries.map((c,i) => record(c,i,previous.get(c['成绩ID'])));
-  }
-  function encode(entries) {
-    const esc = value => /[",\n\r]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
-    return '\uFEFF' + [columns, ...entries.map(c => columns.map(key => c[key] ?? ''))]
-      .map(line => line.map(esc).join(',')).join('\r\n') + '\r\n';
-  }
-
   async function published(original) {
-    publicRows = original;
-    if (/^https?:$/.test(location.protocol)) {
-      const timeout = new AbortController(), timer = setTimeout(() => timeout.abort(), 12000);
-      try {
-        const response = await fetch(csvPath, {cache:'no-cache', signal:timeout.signal});
-        if (!response.ok) throw new Error('CSV unavailable');
-        const bytes = await response.arrayBuffer();
-        let same = false;
-        if (globalThis.crypto?.subtle) {
-          const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-          same = Array.from(hash, v => v.toString(16).padStart(2, '0')).join('') === baseHash;
-        }
-        const csvText = new TextDecoder('utf-8', {fatal:true}).decode(bytes);
-        if (!same) {
-          const entries = sheet(csvText);
-          publicRows = decode(entries, original);
-          baseTable = entries;
-        }
-        publishedCSV = csvText;
-      } catch { sourceError = true; }
-      finally { clearTimeout(timer); }
-    }
+    if (!/^https?:$/.test(location.protocol)) return original;
+    const timeout = new AbortController();
+    const timer = setTimeout(() => timeout.abort(), 12000);
     try {
-      const saved = sessionStorage.getItem(storageKey);
-      if (saved) {
-        const value = JSON.parse(saved);
-        const rows = decode(sheet(value.text), publicRows);
-        preview = value;
-        return merge(publicRows, rows, 'record_id');
+      const response = await fetch(csvPath, {cache: 'no-cache', signal: timeout.signal});
+      if (!response.ok) return original;
+      const bytes = await response.arrayBuffer();
+      if (globalThis.crypto?.subtle) {
+        const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+        const hex = Array.from(hash, value => value.toString(16).padStart(2, '0')).join('');
+        if (hex === baseHash) return original;
       }
-    } catch { try { sessionStorage.removeItem(storageKey); } catch {} }
-    return publicRows;
-  }
-
-  function mount(container, {records, language}) {
-    const en = language === 'en';
-    const tr = (a,b) => en ? b : a;
-    const node = (tag, label) => {
-      const item = document.createElement(tag);
-      if (label !== undefined) item.textContent = label;
-      return item;
-    };
-    const box = node('details');
-    box.className = 'dataset-tools';
-    box.append(node('summary', tr(preview ? '数据更新 · 预览中' : '数据更新', preview ? 'Data updates · Preview' : 'Data updates')));
-    const body = node('div'); body.className = 'dataset-body';
-    if (sourceError) body.append(node('p', tr('公开 CSV 暂未载入，当前显示随网页发布的数据。', 'The public CSV could not be loaded. Showing the bundled results.')));
-    body.append(node('p', tr('使用本站 CSV 格式。相同成绩 ID 覆盖原记录，新 ID 追加。', 'Use the site’s CSV format. Matching result IDs are replaced; new IDs are added.')));
-    const input = node('input'); input.type = 'file'; input.accept = '.csv,text/csv'; input.className = 'sr-only';
-    const upload = node('button', tr('导入 CSV 预览', 'Import CSV preview')); upload.type = 'button';
-    upload.onclick = () => input.click();
-    const status = node('p'); status.className = 'dataset-status'; status.setAttribute('role','status');
-    if (preview) status.textContent = tr('当前标签页正在预览 ', 'Preview in this tab: ') + preview.name;
-    input.onchange = async () => {
-      if (!input.files?.length) return;
-      upload.disabled = true;
-      try {
-        const file = input.files[0], entries = sheet(await file.text());
-        decode(entries, publicRows);
-        const previous = preview ? sheet(preview.text) : [];
-        const text = encode(merge(previous, entries, '成绩ID'));
-        try { sessionStorage.setItem(storageKey, JSON.stringify({name:file.name, text})); }
-        catch { throw bilingualError('浏览器存储空间不足，无法保存预览。', 'Browser storage is unavailable for this preview.'); }
-        location.reload();
-      } catch (e) {
-        status.textContent = (en ? e.en : e.message) || tr('无法读取文件。', 'Could not read this file.');
-        input.value = '';
-        upload.disabled = false;
-      }
-    };
-    const reference = node('a', tr('下载当前数据', 'Download current data')); reference.href = csvPath;
-    reference.download = 'IPFcn-results.csv';
-    const actions = node('div'); actions.className = 'dataset-actions'; actions.append(upload,reference,input);
-    if (preview) {
-      const clear = node('button', tr('退出预览', 'Exit preview')); clear.type = 'button';
-      clear.onclick = () => { sessionStorage.removeItem(storageKey); location.reload(); };
-      actions.append(clear);
-      if (publishedCSV) {
-        const save = node('button', tr('下载合并数据', 'Download merged CSV')); save.type = 'button';
-        save.onclick = () => {
-          const merged = merge(baseTable || sheet(publishedCSV), sheet(preview.text), '成绩ID');
-          const url = URL.createObjectURL(new Blob([encode(merged)], {type:'text/csv;charset=utf-8'}));
-          const link = node('a'); link.href = url; link.download = 'IPFcn-results.csv';
-          body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
-        };
-        actions.append(save);
-      }
+      const entries = sheet(new TextDecoder('utf-8', {fatal: true}).decode(bytes));
+      const byId = new Map(original.map(row => [row.record_id, row]));
+      return entries.map((entry, index) => record(entry, index, byId.get(entry['成绩ID'])));
+    } catch {
+      return original;
+    } finally {
+      clearTimeout(timer);
     }
-    const hint = node('p', tr('公开更新时，将合并后的 IPFcn-results.csv 上传到网站仓库。', 'To publish, upload the merged IPFcn-results.csv to the site repository.'));
-    const publish = node('a', tr('上传至 GitHub', 'Upload to GitHub'));
-    publish.href = 'https://github.com/EisblumeKs/ipfcn_result/upload/main'; publish.target = '_blank'; publish.rel = 'noopener';
-    hint.append(' ', publish);
-    body.append(actions, status, hint); box.append(body); container.replaceChildren(box);
-    return records;
   }
-  globalThis.IPFcnDataset = {published, mount};
-})();
 
+  globalThis.IPFcnDataset = {published};
+})();
 </script>
   <script>'use strict';
 
@@ -2860,12 +2746,9 @@ globalThis.liftPlacings = liftPlacings;
     document.getElementById('page-heading').textContent = title;
     document.getElementById('page-subtitle').textContent = 'RECORDS & DISTRIBUTIONS';
     document.title = title + ' · IPFcn';
-    const originalRows = allRecords;
-    const renderCharts = rows => {
-      if (recordsView.hidden || recordsSelect.value !== discipline) return;
-      if (!applyRankingSelection && chartState?.rows === rows && chartState.discipline === discipline && chartState.language === language) return;
+    if (applyRankingSelection || chartState?.discipline !== discipline || chartState?.language !== language) {
       window.IPFcnRecords.render(recordsContent, {
-        records: rows, language, discipline, athleteName, applyRankingSelection,
+        records: allRecords, language, discipline, athleteName, applyRankingSelection,
         meetName: meetTitle,
         athleteHref: r => byAthlete.has(athleteKey(r)) ? '#athlete=' + encodeURIComponent(athleteKey(r)) : null,
         meetHref: r => byMeet.has(r.meet_id) ? '#' + new URLSearchParams(
@@ -2873,11 +2756,8 @@ globalThis.liftPlacings = liftPlacings;
         genderFilter: filters.genders.length === 1 ? filters.genders[0] : '',
         classFilter: filters.classes.length === 1 ? filters.classes[0] : ''
       });
-      chartState = {rows, language, discipline};
-    };
-    const updated = window.IPFcnDataset?.mount(recordsView.querySelector('[data-records-update]'),
-      {records: originalRows, language, onChange: renderCharts});
-    renderCharts(updated || originalRows);
+      chartState = {language, discipline};
+    }
     if (translating) return;
     const position = history.state?.recordsPosition;
     const link = position?.href && [...recordsContent.querySelectorAll('a[href]')].find(a => a.hash === position.href);
