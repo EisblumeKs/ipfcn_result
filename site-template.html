@@ -12,6 +12,7 @@ function createResultStore(catalog) {
   const assets = catalog.assets;
   const files = new Map();
   const rowsById = new Map();
+  const rowsByOrder = [];
   const rowsByEvent = new Map();
   const rowsBySeason = new Map();
   const rowFiles = new Map();
@@ -62,6 +63,7 @@ function createResultStore(catalog) {
     const existing = rowsById.get(row.record_id);
     if (existing) return existing;
     rowsById.set(row.record_id, row);
+    rowsByOrder[row.source_order] = row;
     const event = row.meet_id + '/' + (row.discipline || 'SBD');
     if (!rowsByEvent.has(event)) rowsByEvent.set(event, []);
     rowsByEvent.get(event).push(row);
@@ -115,32 +117,96 @@ function createResultStore(catalog) {
     return {rows: cached.every(Boolean) ? cached : await rows(entry.file)};
   }
   const previews = new Map();
-  function preview(discipline) {
-    return once(previews, discipline, async () => {
-      const part = await json(assets.preview[discipline]);
+  function preview(discipline, meetType) {
+    const kind = meetType || 'all';
+    return once(previews, discipline + '/' + kind, async () => {
+      const index = catalog.rankingViews[discipline][kind];
+      const cached = index.orders.map(order => rowsByOrder[order]);
+      if (cached.every(Boolean)) return {rows: cached, counts: index.counts};
+      if (meetType && index.extra && catalog.rankingViews[discipline].all.orders.every(order => rowsByOrder[order])) {
+        await rows(index.extra);
+        return {rows: index.orders.map(order => rowsByOrder[order]), counts: index.counts};
+      }
+      const part = await json(index.file);
       return {rows: part.rows.map(remember), counts: part.counts};
     });
   }
-  const rankingViews = new Map();
-  function ranks(discipline, years) {
-    const key = discipline + '/' + [...years].sort().join(',');
-    return once(rankingViews, key, () => assembleRanks(discipline, years));
+  const allSeasonReads = new Map();
+  const typedSeasonReads = new Map();
+  function seasonRows(discipline, year, meetType) {
+    const season = rowsBySeason.get(discipline + '/' + year) || [];
+    return meetType ? season.filter(row => row.meet_type === meetType) : season;
   }
-  async function assembleRanks(discipline, years) {
-    const seasons = assets.ranks[discipline];
-    const selected = (years.length ? years : Object.keys(seasons).map(Number)).filter(year => Object.hasOwn(seasons, year));
-    const known = year => rowsBySeason.get(discipline + '/' + year) || [];
-    const missing = selected.filter(year => known(year).length < catalog.rankingCounts[discipline][year]);
-    const reads = missing.map(year => seasons[year]).filter(Boolean).map(rows);
-    if (missing.some(year => catalog.previewYears[discipline].includes(year))) reads.push(preview(discipline));
-    await Promise.all(reads);
-    return selected.flatMap(known).sort((a, b) => a.source_order - b.source_order);
+  function needMembers(part) {
+    return part && part.orders.some(order => !rowsByOrder[order]);
+  }
+  function readTypeYear(discipline, year, type) {
+    const season = catalog.rankingViews[discipline][type].years[year];
+    const known = seasonRows(discipline, year, type).length;
+    if (!season || known === season.count) return;
+    return once(typedSeasonReads, [discipline, year, type].join('/'), async () => {
+      const missing = season.count - known;
+      let missingPreview = 0;
+      const reads = [];
+      for (const part of [season.global, season.extra]) {
+        if (!needMembers(part)) continue;
+        missingPreview += part.orders.filter(order => !rowsByOrder[order]).length;
+        const shared = part === season.global && previews.get(discipline + '/all');
+        reads.push(shared || rows(part.file));
+      }
+      if (missing > missingPreview) reads.push(rows(season.remainder));
+      await Promise.all(reads);
+    });
+  }
+  function readSeason(discipline, year, meetType) {
+    const key = discipline + '/' + year;
+    const views = catalog.rankingViews[discipline];
+    if (meetType) {
+      return allSeasonReads.get(key) || readTypeYear(discipline, year, meetType);
+    }
+    if (seasonRows(discipline, year).length === catalog.rankingCounts[discipline][year]) return;
+    return once(allSeasonReads, key, async () => {
+      const types = ['domestic', 'international'].filter(type => views[type].years[year]);
+      const missing = types.filter(type => seasonRows(discipline, year, type).length < views[type].years[year].count);
+      const typed = missing.some(type => typedSeasonReads.has(key + '/' + type) ||
+        views[type].years[year].extra?.orders.some(order => rowsByOrder[order]));
+      if (missing.length < types.length || typed) {
+        await Promise.all(missing.map(type => readTypeYear(discipline, year, type)));
+        return;
+      }
+      const file = assets.ranks[discipline][year];
+      const reads = file ? [rows(file)] : [];
+      for (const type of missing) {
+        const part = views[type].years[year].global;
+        if (needMembers(part)) reads.push(previews.get(discipline + '/all') || rows(part.file));
+      }
+      await Promise.all(reads);
+    });
+  }
+  const rankingViews = new Map();
+  function ranks(discipline, years = [], meetType) {
+    const seasons = meetType ? catalog.rankingViews[discipline][meetType].years : assets.ranks[discipline];
+    const selected = [...new Set(years.length ? years : Object.keys(seasons).map(Number))]
+      .filter(year => Object.hasOwn(seasons, year)).sort((a, b) => a - b);
+    const key = [discipline, meetType || 'all', selected.join(',')].join('/');
+    return once(rankingViews, key, async () => {
+      const allYears = !meetType && selected.length === Object.keys(seasons).length;
+      const types = ['domestic', 'international'];
+      const cold = allYears && !types.some(type => previews.has(discipline + '/' + type)) && selected.every(year => {
+        const season = discipline + '/' + year;
+        return !rowsBySeason.has(season) && !allSeasonReads.has(season) &&
+          !types.some(type => typedSeasonReads.has(season + '/' + type));
+      });
+      const shared = cold ? preview(discipline) : undefined;
+      await Promise.all([shared, ...selected.map(year => readSeason(discipline, year, meetType))]);
+      return selected.flatMap(year => seasonRows(discipline, year, meetType)).sort((a, b) => a.source_order - b.source_order);
+    });
   }
   return {meets, archive, meetRows, disciplineFor, preview, charts, ranks,
     scopes: () => json(assets.scopes), search: () => json(assets.search)};
 }
 </script>
-  <script id="site-app" defer src="static/app-51b472e32b611c78ad4cc9d7.js" data-charts="static/charts-ac3638c7dfe8775e0dda9279.js"></script>
+  <script id="site-app" defer src="static/app-ed9c4e8e5b1aa1bfb547318d.js" data-charts="static/charts-ac3638c7dfe8775e0dda9279.js"></script>
   <script>
     window.IPFcnCatalog = JSON.parse(document.getElementById('catalog').textContent);
     window.IPFcnData = createResultStore(window.IPFcnCatalog);
@@ -169,7 +235,7 @@ function createResultStore(catalog) {
       }
     })();
   </script>
-  <link rel="stylesheet" href="static/site-0d3934dd51cbf74dc2a75293.css">
+  <link rel="stylesheet" href="static/site-039501065574d08a4eb783ae.css">
   <script>
     (() => {
       const key = 'ipfcn_result.theme';
@@ -272,7 +338,7 @@ function createResultStore(catalog) {
         <details class="filter" data-key="genders"><summary><span class="field-name"><span data-i18n-en="Gender">性别</span> <small lang="en">GENDER</small></span><span class="selection" data-i18n-en="Men and women">男女全部</span></summary><div class="options" role="group" aria-label="性别" data-i18n-en-aria-label="Gender"></div></details>
         <details class="filter" data-key="divisions"><summary><span class="field-name"><span data-i18n-en="Age division">年龄组</span> <small lang="en">DIVISION</small></span><span class="selection" data-i18n-en="All divisions">全部年龄组</span></summary><div class="options" role="group" aria-label="年龄组" data-i18n-en-aria-label="Age division"></div></details>
         <details hidden class="filter" data-key="classes"><summary><span class="field-name"><span data-i18n-en="Weight class (kg)">级别</span> <small lang="en">CLASS / kg</small></span><span class="selection" data-i18n-en="All classes">全部级别</span></summary><div class="options" role="group" aria-label="级别" data-i18n-en-aria-label="Weight class"></div></details>
-        <details hidden class="filter" data-key="meetTypes"><summary><span class="field-name"><span data-i18n-en="Meet type">赛事类型</span> <small lang="en">MEET TYPE</small></span><span class="selection" data-i18n-en="All meet types">全部赛事</span></summary><div class="options" role="group" aria-label="赛事" data-i18n-en-aria-label="Meet type"></div></details>
+        <details class="filter" data-key="meetTypes"><summary><span class="field-name"><span data-i18n-en="Meet type">赛事类型</span> <small lang="en">MEET TYPE</small></span><span class="selection" data-i18n-en="All meet types">全部赛事</span></summary><div class="options" role="group" aria-label="赛事" data-i18n-en-aria-label="Meet type"></div></details>
         <label class="class-metric-field" for="class-metric" hidden>
           <span class="field-name"><span data-i18n-en="Within class">级别内项目</span> <small lang="en">METRIC</small></span>
           <select id="class-metric" name="class-metric">

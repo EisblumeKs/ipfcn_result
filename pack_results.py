@@ -286,9 +286,38 @@ def pack(csv_path, metadata, output):
     annual_ranks={}
     counts_by_year={}
     preview_years={}
+    ranking_views={}
+    def preview_index(file, part):
+        return {'file': file, 'orders': [r['source_order'] for r in part['rows']], 'counts': part['counts']}
     for d in DISCIPLINES:
         preview=gl_preview(ranking[d])
         previews[d]=asset('preview',preview)
+        views={'all':preview_index(previews[d],preview)}
+        global_orders=set(views['all']['orders'])
+        for kind in ('domestic','international'):
+            matching=[r for r in ranking[d] if r['meet_type']==kind]
+            part=gl_preview(matching)
+            view=preview_index(asset('preview',part),part)
+            extra=[r for r in part['rows'] if r['source_order'] not in global_orders]
+            if extra:
+                view['extra']=asset('ranks',extra)
+            extra_orders={r['source_order'] for r in extra}
+            by_year=defaultdict(list)
+            for r in matching:
+                by_year[str(r['year'])].append(r)
+            view['years']={}
+            for year,group in by_year.items():
+                season={'count':len(group)}
+                remainder=[r for r in group if r['source_order'] not in global_orders and r['source_order'] not in extra_orders]
+                if remainder:
+                    season['remainder']=asset('ranks',remainder)
+                for label,orders in (('global',global_orders),('extra',extra_orders)):
+                    members=[r for r in group if r['source_order'] in orders]
+                    if members:
+                        season[label]={'file':asset('ranks',members),'orders':[r['source_order'] for r in members]}
+                view['years'][year]=season
+            views[kind]=view
+        ranking_views[d]=views
         counts_by_year[d]=dict(Counter(str(row['year']) for row in ranking[d]))
         preview_years[d]=sorted({row['year'] for row in preview['rows']})
         shipped={r['record_id'] for r in preview['rows']}
@@ -300,7 +329,7 @@ def pack(csv_path, metadata, output):
         annual_ranks[d]={str(year):asset('ranks',group) if group else None for year,group in years.items()}
     assets={'scopes':asset('scopes',list(scope_rows.values())), 'preview':previews, 'ranks':annual_ranks,
             'meets':meet_files, 'search':asset('search',search), 'profiles':[asset('profiles',bucket) for bucket in buckets]}
-    catalog={'meets':meets,'assets':assets,'rankingCounts':counts_by_year,'previewYears':preview_years,
+    catalog={'meets':meets,'assets':assets,'rankingCounts':counts_by_year,'previewYears':preview_years,'rankingViews':ranking_views,
              'previousAthleteIds':metadata.get('previousAthleteIds',{}),
              'recordFederations':{mid:next(iter(events.values()))[0]['record_federation']
                                   for mid,events in competitions.items()}}
