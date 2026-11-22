@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0C1421">
+  <title data-i18n-en="IPFcn Competition Results">IPFcn比赛成绩查询系统</title>
+  <link rel="preload" as="script" href="static/app-1fd286bb1c9b678419a77b9a.js">
+  <script type="application/json" id="catalog">__CATALOG__</script>
+  <script>'use strict';
+
+function createResultStore(catalog) {
+  const assets = catalog.assets;
+  const files = new Map();
+  const rowsById = new Map();
+  const rowsByEvent = new Map();
+  const rowsBySeason = new Map();
+  const rowFiles = new Map();
+  const meets = new Map(catalog.meets.map(meet => [meet.meet_id, meet]));
+  const failed = new Set();
+  async function recoverRevision(path) {
+    const key = 'ipfcn.recovered-url';
+    try {
+      if (sessionStorage.getItem(key) === path) return;
+      const response = await fetch(location.pathname, {cache: 'reload'});
+      if (!response.ok) return;
+      const html = await response.text();
+      const match = html.match(/<script type="application\/json" id="catalog">([^<]+)<\/script>/);
+      if (match && match[1] !== document.getElementById('catalog').textContent) {
+        sessionStorage.setItem(key, path);
+        location.reload();
+      }
+    } catch {}
+  }
+
+  function once(map, key, read) {
+    if (!map.has(key)) {
+      map.set(key, read().catch(error => {
+        map.delete(key);
+        throw error;
+      }));
+    }
+    return map.get(key);
+  }
+  function json(path) {
+    return once(files, path, async () => {
+      try {
+        const response = await fetch(path, {cache: failed.has(path) ? 'reload' : 'force-cache'});
+        if (!response.ok) {
+          if (response.status === 404) await recoverRevision(path);
+          throw new Error('HTTP ' + response.status + ' ' + path);
+        }
+        const value = await response.json();
+        failed.delete(path);
+        return value;
+      } catch (error) {
+        failed.add(path);
+        throw error;
+      }
+    });
+  }
+  function remember(row) {
+    const existing = rowsById.get(row.record_id);
+    if (existing) return existing;
+    rowsById.set(row.record_id, row);
+    const event = row.meet_id + '/' + (row.discipline || 'SBD');
+    if (!rowsByEvent.has(event)) rowsByEvent.set(event, []);
+    rowsByEvent.get(event).push(row);
+    if (row.rankings_eligible) {
+      const season = (row.discipline || 'SBD') + '/' + row.year;
+      if (!rowsBySeason.has(season)) rowsBySeason.set(season, []);
+      rowsBySeason.get(season).push(row);
+    }
+    return row;
+  }
+  function rows(path) {
+    return once(rowFiles, path, async () => (await json(path)).map(remember));
+  }
+  function disciplineFor(id, requested) {
+    const available = meets.get(id)?.disciplines || [];
+    return available.includes(requested) ? requested : available[0];
+  }
+  async function meetRows(id, discipline) {
+    if (!discipline) return undefined;
+    const event = id + '/' + discipline;
+    if (rowsByEvent.get(event)?.length !== meets.get(id).counts[discipline]) {
+      await rows(assets.meets[id][discipline]);
+    }
+    return rowsByEvent.get(event).sort((a, b) => a.source_order - b.source_order);
+  }
+  let chartScript;
+  function charts() {
+    if (window.IPFcnRecords) return;
+    if (!chartScript) {
+      chartScript = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = document.getElementById('site-app').dataset.charts;
+        script.onload = resolve;
+        script.onerror = () => {
+          chartScript = undefined;
+          script.remove();
+          reject(new Error('Chart library unavailable'));
+        };
+        document.head.append(script);
+      });
+    }
+    return chartScript;
+  }
+  async function archive(id) {
+    let bucket = 0;
+    for (const char of id) bucket = (31 * bucket + char.codePointAt(0)) % 32;
+    const index = await json(assets.profiles[bucket]);
+    const entry = Object.hasOwn(index.profiles, id) && index.profiles[id];
+    if (!entry) return {foreign: index.foreign.includes(id)};
+    const cached = entry.ids.map(key => rowsById.get(key));
+    return {rows: cached.every(Boolean) ? cached : await rows(entry.file)};
+  }
+  const previews = new Map();
+  function preview(discipline) {
+    return once(previews, discipline, async () => {
+      const part = await json(assets.preview[discipline]);
+      return {rows: part.rows.map(remember), counts: part.counts};
+    });
+  }
+  const rankingViews = new Map();
+  function ranks(discipline, years) {
+    const key = discipline + '/' + [...years].sort().join(',');
+    return once(rankingViews, key, () => assembleRanks(discipline, years));
+  }
+  async function assembleRanks(discipline, years) {
+    const seasons = assets.ranks[discipline];
+    const selected = (years.length ? years : Object.keys(seasons).map(Number)).filter(year => Object.hasOwn(seasons, year));
+    const known = year => rowsBySeason.get(discipline + '/' + year) || [];
+    const missing = selected.filter(year => known(year).length < catalog.rankingCounts[discipline][year]);
+    const reads = missing.map(year => seasons[year]).filter(Boolean).map(rows);
+    if (missing.some(year => catalog.previewYears[discipline].includes(year))) reads.push(preview(discipline));
+    await Promise.all(reads);
+    return selected.flatMap(known).sort((a, b) => a.source_order - b.source_order);
+  }
+  return {meets, archive, meetRows, disciplineFor, preview, charts, ranks,
+    scopes: () => json(assets.scopes), search: () => json(assets.search)};
+}
+</script>
+  <script id="site-app" defer src="static/app-1fd286bb1c9b678419a77b9a.js" data-charts="static/charts-5c0870f815537d74c130d4d8.js"></script>
+  <script>
+    window.IPFcnCatalog = JSON.parse(document.getElementById('catalog').textContent);
+    window.IPFcnData = createResultStore(window.IPFcnCatalog);
+    (() => {
+      const route = new URLSearchParams(location.hash.slice(1));
+      const discipline = route.get('discipline') === 'B' ? 'B' : 'SBD';
+      const store = window.IPFcnData;
+      function start(work) { Promise.resolve(work).catch(() => {}); }
+      if (route.has('meet')) {
+        const id = route.get('meet');
+        const event = store.disciplineFor(id, discipline);
+        if (event) { start(store.meetRows(id, event)); start(store.charts()); }
+      } else if (route.has('records')) {
+        start(store.ranks(discipline, [])); start(store.charts());
+      } else if (route.has('athlete')) {
+        const key = route.get('athlete');
+        start(store.archive(window.IPFcnCatalog.previousAthleteIds[key] || key));
+      } else {
+        start(store.scopes());
+        const saved = history.state?.ranking;
+        const project = !route.has('discipline') && saved?.filters.discipline === 'B' ? 'B' : discipline;
+        const sort = route.get('sort') || saved?.filters?.sort || 'gl';
+        const years = saved?.filters?.years || [];
+        const full = sort !== 'gl' || years.length || saved?.filters?.divisions?.length || saved?.expanded?.length;
+        start(full ? store.ranks(project, years) : store.preview(project));
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="static/site-c2d2d731e5af03521b0f30cb.css">
+  <script>
+    (() => {
+      const key = 'ipfcn_result.theme';
+      const root = document.documentElement;
+      const themeColor = document.querySelector('meta[name="theme-color"]');
+      const requestedLanguage = new URLSearchParams(location.search).get('lang');
+      let language = requestedLanguage;
+      if (language !== 'zh' && language !== 'en') {
+        try { language = localStorage.getItem('ipfcn_result.language'); } catch {}
+      }
+      if (language === 'en') {
+        root.lang = 'en';
+        root.dataset.languagePending = '';
+      }
+      window.IPFcnBranding = () => {
+        if (document.body?.dataset.view !== 'home') return;
+        for (const img of document.querySelectorAll('.home-mark .mark-' + root.dataset.theme)) {
+          if (!img.hasAttribute('src')) img.src = img.dataset.src;
+        }
+      };
+      function applyTheme(value) {
+        root.dataset.theme = value === 'light' ? 'light' : 'dark';
+        themeColor.content = getComputedStyle(root).getPropertyValue('--background').trim();
+        const select = document.getElementById('theme-select');
+        if (select) select.value = root.dataset.theme;
+        window.IPFcnBranding();
+      }
+      let saved = 'dark';
+      try { saved = localStorage.getItem(key); } catch {}
+      applyTheme(saved);
+      document.addEventListener('DOMContentLoaded', () => {
+        const select = document.getElementById('theme-select');
+        select.value = root.dataset.theme;
+        select.addEventListener('change', () => {
+          applyTheme(select.value);
+          try { localStorage.setItem(key, root.dataset.theme); } catch {}
+        });
+      });
+      window.addEventListener('storage', event => {
+        if (event.key === key || event.key === null) applyTheme(event.newValue);
+      });
+    })();
+  </script>
+</head>
+<body>
+  <main class="sheet">
+    <header class="masthead">
+      <div class="mast-title">
+        <span class="home-mark" role="img" aria-label="IPF China">
+          <img class="mark-light" data-src="static/ipf-china-d0fcada6781c8881f32abe9d.webp" width="263" height="195" alt="">
+          <img class="mark-dark" data-src="static/ipf-china-dark-9247165e4ade932db758bd02.webp" width="263" height="195" alt="">
+        </span>
+        <div class="mast-title-copy"><h1 id="page-heading" data-i18n-en="IPFcn Competition Results">IPFcn比赛成绩查询系统</h1><p id="page-subtitle" class="secondary-copy" lang="en">IPFcn COMPETITION RESULTS</p></div>
+        <span class="home-mark" role="img" aria-label="China Powerlifting">
+          <img class="mark-light" data-src="static/china-powerlifting-9dcf7d8608caa77bd9c60bdc.webp" width="319" height="217" alt="">
+          <img class="mark-dark" data-src="static/china-powerlifting-dark-cfcee0efdf6889c8e36e6a13.webp" width="319" height="217" alt="">
+        </span>
+      </div>
+      <nav class="project-nav" aria-label="成绩导航" data-i18n-en-aria-label="Results navigation">
+        <a id="nav-sbd" href="#" data-project="SBD" aria-current="page"><span data-i18n-en="Powerlifting">力量举</span><small class="secondary-copy" lang="en">POWERLIFTING</small></a>
+        <a id="nav-bench" href="#discipline=B" data-project="B"><span data-i18n-en="Bench Press">卧推举</span><small class="secondary-copy" lang="en">BENCH PRESS</small></a>
+        <a id="nav-records" href="#records"><span data-i18n-en="Records &amp; Distributions">纪录与分布</span><small class="secondary-copy" lang="en">RECORDS &amp; DISTRIBUTIONS</small></a>
+      </nav>
+      <div class="mast-mode"><h2 id="mode-zh" data-i18n-en="Overall GL Rankings">GL系数总排名</h2><p id="mode-en" class="secondary-copy" lang="en">OVERALL GL RANKINGS</p></div>
+      <div class="display-controls">
+        <label class="theme-control">
+          <span class="control-caption"><span data-i18n-en="Theme">主题</span> <small class="secondary-copy" lang="en">THEME</small></span>
+          <select id="theme-select" aria-label="主题 / Theme" data-i18n-en-aria-label="Theme">
+            <option value="dark" data-i18n-en="Dark">深色</option>
+            <option value="light" data-i18n-en="Light">浅色</option>
+          </select>
+        </label>
+        <label class="theme-control language-control">
+          <span class="control-caption"><span data-i18n-en="Language">语言</span> <small class="secondary-copy" lang="en">LANG</small></span>
+          <select id="language-select" aria-label="语言 / Language" data-i18n-en-aria-label="Language">
+            <option value="zh" lang="zh-CN">中文</option>
+            <option value="en" lang="en">EN</option>
+          </select>
+        </label>
+      </div>
+    </header>
+    <div id="ranking-view">
+      <div class="ranking-toolbar" role="group" aria-label="排行榜工具" data-i18n-en-aria-label="Ranking tools">
+        <div class="ranking-modes" id="sort" role="group" aria-label="排名视图" data-i18n-en-aria-label="Ranking view">
+          <button type="button" data-mode="total" aria-pressed="false" data-i18n-en="Weight-class rankings">级别排名</button>
+          <button type="button" data-mode="gl" aria-pressed="true" data-i18n-en="GL rankings">GL系数排名</button>
+        </div>
+        <div class="athlete-lookup" role="search">
+          <label class="field-name" for="athlete-search"><span data-i18n-en="Search">搜索</span> <small lang="en">SEARCH</small></label>
+          <input id="athlete-search" type="search" placeholder="搜索运动员或赛事" data-i18n-en-placeholder="Athlete or competition" autocomplete="off" enterkeyhint="search" aria-controls="athlete-matches">
+          <div id="athlete-matches" role="region" aria-label="匹配的运动员与赛事" data-i18n-en-aria-label="Matching athletes and competitions" hidden></div>
+          <span class="sr-only" id="search-status" role="status"></span>
+        </div>
+        <label class="meet-picker meet-select-field" for="meet-select"><span class="field-name"><span data-i18n-en="Meet results">单场成绩</span> <small lang="en">MEET RESULTS</small></span>
+          <select id="meet-select"><option value="" data-i18n-en="Select a competition">选择赛事</option></select>
+        </label>
+      </div>
+      <form class="filters" aria-label="排行榜筛选条件" data-i18n-en-aria-label="Ranking filters">
+        <details class="filter" data-key="years"><summary><span class="field-name"><span data-i18n-en="Year">年份</span> <small lang="en">YEAR</small></span><span class="selection" data-i18n-en="All years">全部年份</span></summary><div class="options" role="group" aria-label="年份" data-i18n-en-aria-label="Year"></div></details>
+        <details class="filter" data-key="genders"><summary><span class="field-name"><span data-i18n-en="Gender">性别</span> <small lang="en">GENDER</small></span><span class="selection" data-i18n-en="Men and women">男女全部</span></summary><div class="options" role="group" aria-label="性别" data-i18n-en-aria-label="Gender"></div></details>
+        <details class="filter" data-key="divisions"><summary><span class="field-name"><span data-i18n-en="Age division">年龄组</span> <small lang="en">DIVISION</small></span><span class="selection" data-i18n-en="All divisions">全部年龄组</span></summary><div class="options" role="group" aria-label="年龄组" data-i18n-en-aria-label="Age division"></div></details>
+        <details hidden class="filter" data-key="classes"><summary><span class="field-name"><span data-i18n-en="Weight class (kg)">级别</span> <small lang="en">CLASS / kg</small></span><span class="selection" data-i18n-en="All classes">全部级别</span></summary><div class="options" role="group" aria-label="级别" data-i18n-en-aria-label="Weight class"></div></details>
+        <details hidden class="filter" data-key="meetTypes"><summary><span class="field-name"><span data-i18n-en="Meet type">赛事类型</span> <small lang="en">MEET TYPE</small></span><span class="selection" data-i18n-en="All meet types">全部赛事</span></summary><div class="options" role="group" aria-label="赛事" data-i18n-en-aria-label="Meet type"></div></details>
+        <label class="class-metric-field" for="class-metric" hidden>
+          <span class="field-name"><span data-i18n-en="Within class">级别内项目</span> <small lang="en">METRIC</small></span>
+          <select id="class-metric" name="class-metric">
+            <option value="total" data-i18n-en="Total">总成绩</option>
+            <option value="squat" data-i18n-en="Squat">蹲举</option>
+            <option value="bench" data-i18n-en="Bench Press">卧推举</option>
+            <option value="deadlift" data-i18n-en="Deadlift">硬举</option>
+          </select>
+        </label>
+      </form>
+      <div class="sr-only" id="result-status" aria-live="polite" aria-atomic="true"></div>
+      <div id="rankings"></div>
+    </div>
+    <div id="athlete-view" hidden>
+      <nav class="archive-nav" aria-label="运动员档案导航" data-i18n-en-aria-label="Athlete archive navigation"><a id="back-to-rankings" href="#"><span data-i18n-en="← Back to rankings">← 返回排行榜</span> <small lang="en">RANKINGS</small></a></nav>
+      <section class="ranking-section" id="athlete-records"></section>
+    </div>
+    <div id="meet-view" hidden>
+      <nav class="archive-nav meet-nav" aria-label="单场赛事导航" data-i18n-en-aria-label="Meet navigation">
+        <a id="meet-back" href="#"><span data-i18n-en="← Back to rankings">← 返回排行榜</span> <small lang="en">RANKINGS</small></a>
+        <span id="meet-date"></span>
+      </nav>
+      <div class="ranking-toolbar meet-toolbar" role="group" aria-label="单场赛事工具" data-i18n-en-aria-label="Competition tools">
+        <div class="ranking-modes" id="meet-sort" role="group" aria-label="排名视图" data-i18n-en-aria-label="Ranking view">
+          <button type="button" data-mode="total" aria-pressed="false" data-i18n-en="Weight-class rankings">级别排名</button>
+          <button type="button" data-mode="gl" aria-pressed="true" data-i18n-en="GL rankings">GL系数排名</button>
+        </div>
+        <div class="athlete-lookup" role="search">
+          <label class="field-name" for="meet-athlete-search"><span data-i18n-en="Find an athlete">本场选手</span> <small lang="en">ATHLETE</small></label>
+          <input id="meet-athlete-search" type="search" placeholder="输入姓名或拼音" data-i18n-en-placeholder="Name or pinyin" autocomplete="off" enterkeyhint="search" aria-controls="meet-athlete-matches">
+          <div id="meet-athlete-matches" role="region" aria-label="本场匹配的运动员" data-i18n-en-aria-label="Matching athletes in this meet" hidden></div>
+          <span class="sr-only" id="meet-search-status" role="status"></span>
+        </div>
+      </div>
+      <form class="filters meet-filters" aria-label="单场赛事筛选条件" data-i18n-en-aria-label="Meet filters">
+        <details class="filter" data-key="genders"><summary><span class="field-name"><span data-i18n-en="Gender">性别</span> <small lang="en">GENDER</small></span><span class="selection" data-i18n-en="Men and women">男女全部</span></summary><div class="options" role="group" aria-label="性别" data-i18n-en-aria-label="Gender"></div></details>
+        <details hidden class="filter" data-key="classes"><summary><span class="field-name"><span data-i18n-en="Weight class (kg)">级别</span> <small lang="en">CLASS / kg</small></span><span class="selection" data-i18n-en="All classes">全部级别</span></summary><div class="options" role="group" aria-label="级别" data-i18n-en-aria-label="Weight class"></div></details>
+        <details class="filter" data-key="divisions"><summary><span class="field-name"><span data-i18n-en="Age division">年龄组</span> <small lang="en">DIVISION</small></span><span class="selection" data-i18n-en="All divisions">全部年龄组</span></summary><div class="options" role="group" aria-label="年龄组" data-i18n-en-aria-label="Age division"></div></details>
+        <label class="class-metric-field" for="meet-class-metric" hidden>
+          <span class="field-name"><span data-i18n-en="Within class">级别内项目</span> <small lang="en">METRIC</small></span>
+          <select id="meet-class-metric" name="meet-class-metric">
+            <option value="total" data-i18n-en="Total">总成绩</option>
+            <option value="squat" data-i18n-en="Squat">蹲举</option>
+            <option value="bench" data-i18n-en="Bench Press">卧推举</option>
+            <option value="deadlift" data-i18n-en="Deadlift">硬举</option>
+          </select>
+        </label>
+      </form>
+      <div id="meet-athlete-filter" class="archive-nav" hidden><strong id="meet-selected-name"></strong> <a id="meet-reset-athlete" href="#"><span data-i18n-en="View all athletes in this meet">查看本场全部运动员</span> <small lang="en">ALL ATHLETES</small></a></div>
+      <div class="sr-only" id="meet-result-status" role="status"></div>
+      <div id="meet-rankings"></div>
+    </div>
+    <section id="records-view" aria-labelledby="page-heading" hidden>
+      <div class="records-tools">
+        <label class="discipline-field" for="records-discipline"><span class="field-name"><span data-i18n-en="Discipline">比赛项目</span> <small lang="en">DISCIPLINE</small></span>
+          <select id="records-discipline"><option value="SBD" data-i18n-en="Powerlifting">力量举三项</option><option value="B" data-i18n-en="Bench Press">卧推举单项</option></select>
+        </label>
+      </div>
+      <div id="records-content"></div>
+    </section>
+    <noscript><span lang="zh-CN">请开启 JavaScript 以查看和筛选成绩。</span> <span lang="en">Enable JavaScript to view and filter results.</span></noscript>
+    <footer>
+      <p class="zh-footer" lang="zh-CN">国内成绩收录自 2020 年 IPFcn 成立以来 B 级（区域赛）及以上赛事的经典力量举三项和卧推举单项。国际成绩收录自 2017 年起中国代表队参加的亚洲力量举联合会（APF）和国际力量举联合会（IPF）赛事。国际赛单场成绩表涵盖各代表队，代表中国参赛的成绩计入总榜。个别涉及反兴奋剂争议的运动员未纳入统计。</p>
+      <p lang="en">Domestic results cover Classic Powerlifting and Classic Bench Press at IPFcn Grade B (regional) meets and above since IPFcn was established in 2020. International results cover Asian Powerlifting Federation (APF) and International Powerlifting Federation (IPF) meets attended by Team China from 2017 onward. International meet results include all teams. Performances for Team China count toward the overall rankings. A small number of athletes involved in anti-doping disputes are excluded.</p>
+      <a class="data-download" href="./IPFcn-results.csv" download="IPFcn-results.csv"><span data-i18n-en="Download all results (CSV)">下载全部成绩</span> <small lang="en">DOWNLOAD CSV</small></a>
+    </footer>
+  </main>
+  <small class="site-credit" data-i18n-en="Developed by EisblumeKs">由 EisblumeKs 开发</small>
+  <script>
+    const initialRoute = new URLSearchParams(location.hash.slice(1));
+    if (!['meet', 'records', 'athlete'].some(key => initialRoute.has(key))) {
+      document.body.dataset.view = 'home';
+      window.IPFcnBranding();
+    }
+  </script>
+</body>
+</html>
