@@ -767,36 +767,31 @@ html[lang="en"] .section-bar, html[lang="en"] .ranking thead th { font-family: v
   --rd-compare-stroke: .5;
 }
 #records-content, .rd-meet-section {
-  --rd-rule: color-mix(in srgb, var(--muted) 25%, transparent);
+  --rd-gutter: clamp(10px, 1.25vw, 18px);
   width: 100%;
   min-width: 0;
 }
 .rd-section {
-  margin: 0 0 22px;
-  border: 1px solid var(--line);
-  background: var(--header);
+  margin: 0 0 clamp(16px, 1.45vw, 21px);
+  min-width: 0;
   color: var(--text);
 }
-.rd-header {
-  border-bottom: 1px solid var(--line);
-  background: var(--group);
-  padding: 14px clamp(14px, 2vw, 26px);
+.rd-section p { margin: 0; }
+.rd-header > p, .rd-chart-heading, .rd-filters { background: var(--header); }
+.rd-header > p, .rd-chart-heading p {
+  color: var(--muted);
+  font-size: .875rem;
+  line-height: 1.5;
 }
-.rd-section h3, .rd-section h4, .rd-section p { margin: 0; }
-.rd-header h3 {
-  margin: 0;
-  font: 600 clamp(18px, 1.6vw, 23px)/1.28 var(--chinese);
-  letter-spacing: .015em;
-}
-html[lang="en"] .rd-header h3 { font-family: var(--sans); }
-.rd-header p { margin-top: 5px; color: var(--muted); font-size: .875rem; line-height: 1.55; }
+.rd-header > p { padding: 7px var(--rd-gutter); }
 .rd-filters, .rd-chart-heading {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px 25px;
-  padding: 14px clamp(14px, 2vw, 26px);
+  gap: 8px 24px;
+  padding: 8px var(--rd-gutter);
 }
+.rd-chart-heading { justify-content: space-between; }
 .rd-field { display: inline-flex; align-items: center; gap: 9px; font-size: .875rem; }
 .rd-field > span { color: var(--muted); }
 .rd-field select {
@@ -809,46 +804,72 @@ html[lang="en"] .rd-header h3 { font-family: var(--sans); }
   background-size: 4px 4px;
   background-repeat: no-repeat;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: 0;
   padding: 5px 28px 5px 11px;
 }
-.rd-table-wrap { padding: 0 clamp(14px, 2vw, 26px) 18px; }
-.rd-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9375rem; line-height: 1.45; }
-.rd-table caption { color: var(--text); text-align: left; padding: 0 0 12px; font-size: 1.125rem; font-weight: 600; }
-.rd-table thead { background: var(--group); }
-.rd-table th, .rd-table td { padding: 9px 12px; border-bottom: 1px solid var(--rd-rule); }
-.rd-table thead th { color: var(--muted); font-size: .8125rem; font-weight: 600; }
-.rd-table tbody th { width: 16%; font-weight: 500; }
-.rd-table .rd-mark { width: 20%; font-size: 1.15rem; font-weight: 650; }
+.rd-table-wrap { min-width: 0; }
+.rd-table { width: 100%; border-collapse: separate; border-spacing: 0 2px; text-align: left; font-size: 1rem; line-height: 1.35; }
+.rd-table caption {
+  padding: 5px var(--rd-gutter);
+  background: var(--group);
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.rd-table thead { background: var(--header); }
+.rd-table th, .rd-table td { padding: 7px var(--rd-gutter); vertical-align: middle; }
+.rd-table thead th { color: var(--muted); font-size: .875rem; font-weight: 600; }
+.rd-table tbody tr { background: var(--blue); }
+.rd-table tbody tr:nth-child(even) { background: var(--blue-alt); }
+.rd-table tbody th { width: 16%; font-weight: 600; }
+.rd-table .rd-mark { width: 18%; background: var(--highlight); font-size: 1.15rem; font-weight: 700; }
 .rd-table .rd-mark small { color: var(--muted); font-size: .8125rem; font-weight: 400; }
 .rd-table .rd-person { width: 22%; }
 .rd-table a { color: var(--text); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
 .rd-table a:hover { color: var(--focus); }
 .rd-event small { display: block; color: var(--muted); font-size: .8125rem; margin-top: 2px; }
-.rd-group-note { margin-top: 10px !important; font-size: .8125rem; color: var(--muted); }
-.rd-chart-heading { justify-content: space-between; }
-.rd-chart-heading h4 { font-size: 1.02rem; line-height: 1.4; font-weight: 600; }
+.rd-group-note { padding: 4px var(--rd-gutter); font-size: .8125rem; color: var(--muted); }
 .rd-figure {
-  margin: 0 clamp(10px, 2vw, 26px) 18px;
-  padding: clamp(8px, 1.25vw, 16px);
+  width: 100%;
+  min-width: 0;
+  margin: 0;
   color: var(--rd-ink);
   background: var(--rd-paper);
-  border: 1px solid var(--rd-frame);
+  border-bottom: 1px solid var(--rd-frame);
 }
-.rd-header + .rd-figure { margin-top: 16px; }
-.rd-legend, .rd-chart-foot { display: flex; flex-wrap: wrap; gap: 6px 24px; }
-.rd-legend { padding: 0 3px 5px; }
+.rd-figure-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+}
+.rd-figure-head:not(.section-bar) {
+  min-height: 36px;
+  padding: 5px var(--rd-gutter);
+  border-bottom: 2px solid var(--rd-paper);
+  background: var(--group);
+}
+.rd-figure-title { margin: 0; color: var(--text); font: 600 1rem/1.3 var(--chinese); }
+.section-bar .rd-figure-title { font: inherit; }
+html[lang="en"] .rd-figure-title { font-family: var(--sans); }
+.rd-legend, .rd-chart-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; }
 .rd-series, .rd-marks {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   color: var(--rd-chart-muted);
-  font-size: .8125rem;
-  line-height: 1.5;
+  font: 500 .875rem/1.45 var(--sans);
 }
-.rd-chart-foot { justify-content: space-between; margin: 5px 3px 0; color: var(--rd-chart-muted); font-size: .8125rem; }
-.rd-swatch { display:inline-block; flex:none; }
-.rd-swatch { width: 19px; height: 3px; background: currentColor; }
+.rd-chart-foot {
+  justify-content: space-between;
+  margin: 0;
+  padding: 5px var(--rd-gutter);
+  border-top: 1px solid var(--rd-grid);
+  color: var(--rd-chart-muted);
+  font-size: .875rem;
+}
+.rd-swatch { display: inline-block; flex: none; width: 19px; height: 3px; background: currentColor; }
 .rd-hist-key, .rd-kde-key { display: inline-flex; align-items: center; gap: 1px; flex: none; }
 .rd-hist-key { width: 13px; height: 10px; }
 .rd-kde-key { width: 17px; margin-left: .55em; }
@@ -856,9 +877,9 @@ html[lang="en"] .rd-header h3 { font-family: var(--sans); }
 .rd-hist-key i { height: 100%; background: currentColor; opacity: var(--rd-bar-opacity); }
 .rd-kde-key i { border-top: 2px solid currentColor; }
 .rd-kde-key .rd-orange { border-top-style: dashed; }
-.rd-plot { width: 100%; min-width: 0; }
+.rd-plot { width: calc(100% - 2 * var(--rd-gutter)); min-width: 0; margin: 5px auto 2px; }
 .rd-plot svg { display: block; width: 100%; overflow: visible; }
-.rd-plot text { font: 13px var(--sans); fill: var(--rd-chart-muted); }
+.rd-plot text { font: 14px var(--sans); fill: var(--rd-chart-muted); }
 .rd-plot .rd-axis-label { font-weight: 500; fill: var(--rd-ink); }
 .rd-gridline { stroke: var(--rd-grid); stroke-width: 1; }
 .rd-axis { stroke: var(--rd-axis); stroke-width: 1; fill: none; }
@@ -872,58 +893,35 @@ html[lang="en"] .rd-header h3 { font-family: var(--sans); }
 .rd-swatch.rd-orange { background: repeating-linear-gradient(90deg, currentColor 0 5px, transparent 5px 8px); }
 .rd-point { fill: currentColor; stroke: var(--rd-paper); stroke-width: .8; }
 .rd-marker { stroke: var(--rd-axis); stroke-width: 1; stroke-dasharray: 4 3; }
-.rd-empty, .rd-sparse { font-size: .875rem; line-height: 1.5; color: var(--rd-chart-muted); padding: .55em .2em; }
-.rd-meet-section {
-  max-width: 39rem;
-  margin: 8px auto 16px;
-  border: 0;
-  background: transparent;
-}
-.meet-gl-distribution { max-width: 46rem; margin-block: 15px; }
-.rd-meet-section .rd-figure {
-  margin: 0;
-  padding: 6px 12px;
-}
-.rd-meet-section .rd-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 2px 14px;
-  padding: 0 0 2px;
-  background: transparent;
-  border: 0;
-}
-.rd-meet-section .rd-header h3 {
-  color: var(--rd-ink);
+.rd-empty, .rd-sparse, .rd-chart-note {
+  padding: 5px var(--rd-gutter);
   font-size: .875rem;
-  line-height: 1.4;
+  line-height: 1.45;
+  color: var(--rd-chart-muted);
 }
-.rd-meet-section .rd-legend { padding: 0; gap: 2px 12px; }
-.rd-meet-section .rd-series, .rd-meet-section .rd-marks,
-.rd-meet-section .rd-chart-foot, .rd-meet-section .rd-sparse { font-size: .75rem; line-height: 1.35; }
-.rd-meet-section .rd-chart-foot { margin: 2px 0 0; gap: 2px 12px; }
-.rd-meet-section .rd-sparse { padding: 2px 0 0; }
-.rd-meet-section .rd-plot text { font-size: 12px; }
+.rd-sparse { padding-top: 1px; }
+.meet-class-distribution { margin: 1px 0 clamp(12px, 1.3vw, 18px); }
 @media (max-width: 600px) {
   .rd-section { margin-bottom: 15px; }
-  .rd-header p { font-size: .8125rem; }
+  .rd-header p { font-size: .875rem; }
   .rd-chart-heading, .rd-filters { gap: 9px 14px; }
   .rd-field { gap: 6px; }
-  .rd-table { font-size: .875rem; }
-  .rd-table thead th, .rd-table th, .rd-table td { padding: 8px 4px; }
-  .rd-table thead th, .rd-event small { font-size: .75rem; }
+  .rd-table { font-size: .9375rem; }
+  .rd-table thead th, .rd-table th, .rd-table td { padding: 7px 5px; }
+  .rd-table thead th, .rd-event small { font-size: .8125rem; }
   .rd-table .rd-mark { width: auto; font-size: 1rem; white-space: nowrap; }
   .rd-table .rd-person { width: 19%; }
   .rd-table .rd-event { overflow-wrap: anywhere; }
-  .rd-table .rd-mark small { font-size: .7rem; }
-  .rd-legend { gap: 3px 10px; }
-  .rd-legend .rd-series, .rd-marks, .rd-chart-foot { font-size: .75rem; }
-  .rd-plot text { font-size: 11px; }
-  .rd-meet-section { margin-block: 6px 12px; }
-  .rd-meet-section .rd-figure { padding: 5px 7px; }
-  .rd-meet-section .rd-header h3 { font-size: .8125rem; }
-  .rd-meet-section .rd-plot text { font-size: 11px; }
+  .rd-table .rd-mark small { font-size: .75rem; }
+  .rd-figure-head { align-items: baseline; gap: 2px 12px; }
+  .rd-figure-head:not(.section-bar) { padding-block: 6px; }
+  .rd-legend { gap: 2px 12px; }
+  .rd-series, .rd-marks, .rd-chart-foot, .rd-sparse, .rd-chart-note { font-size: .8125rem; }
+  .rd-chart-foot { column-gap: 12px; }
+  .rd-plot text { font-size: 12px; }
+}
+@media (max-width: 360px) {
+  html[lang="en"] .rd-table th, html[lang="en"] .rd-table td { padding-inline: 4px; }
 }
 @media print {
   .rd-section { break-inside: avoid; }
@@ -1431,14 +1429,17 @@ globalThis.liftPlacings = liftPlacings;
     return {counts, bars, curve, peak, h, median: quantile(values, .5)};
   }
 
-  function chart(host, samples, {en, isGL, xLabel, median, contextTitle, refineBandwidth, compact}) {
+  function chart(host, samples, {en, isGL, xLabel, median, contextTitle, refineBandwidth, singleMeet, note}) {
     const t = (zh, eng) => en ? eng : zh;
-    host.replaceChildren();
+    const header = element('div', isGL ? 'rd-figure-head section-bar' : 'rd-figure-head');
+    header.append(element(isGL || singleMeet ? 'h3' : 'h4', 'rd-figure-title', contextTitle));
+    host.replaceChildren(header);
     samples = samples.filter(sample => sample.values.length);
     for (const sample of samples) sample.values.sort((a, b) => a - b);
     const layout = histogramLayout(samples.map(sample => sample.values), isGL);
     if (!layout) {
       host.append(element('p', 'rd-empty', t('暂无有效成绩。', 'No results available.')));
+      if (note) host.append(element('p', 'rd-chart-note', note));
       return () => {};
     }
     const estimates = samples.map(sample => seriesEstimate(sample.values, layout, isGL, refineBandwidth));
@@ -1447,7 +1448,7 @@ globalThis.liftPlacings = liftPlacings;
       const estimate = estimates[index];
       const showMedian = median && !isGL;
       const value = showMedian ? estimate.median : estimate.peak?.[0];
-      const label = compact && !isGL ? [] : [sample.label];
+      const label = isGL ? [sample.label] : [];
       label.push('n = ' + sample.values.length);
       if (value !== null && value !== undefined) {
         label.push((showMedian ? t('中位数 ', 'Median ') : t('峰值 ', 'Mode ')) +
@@ -1474,11 +1475,13 @@ globalThis.liftPlacings = liftPlacings;
     markLegend.append(histKey, document.createTextNode(t('直方图', 'Histogram')));
     if (hasKDE) markLegend.append(kdeKey, document.createTextNode(t('高斯核密度估计', 'Gaussian KDE')));
     foot.append(markLegend, element('span', '', t('组距 ', 'Bin width ') + Number(layout.width.toPrecision(6)) + (isGL ? '' : ' kg')));
-    host.append(legend, figure, foot);
+    header.append(legend);
+    host.append(figure, foot);
     if (estimates.some(estimate => !estimate.h)) {
       host.append(element('p', 'rd-sparse', t('样本不足三人或成绩相同时，仅绘制直方图。',
         'A histogram is shown for samples with fewer than three athletes or no variation.')));
     }
+    if (note) host.append(element('p', 'rd-chart-note', note));
     const ymax = Math.max(...estimates.map(series => Math.max(...series.bars, series.peak?.[1] || 0))) * 1.12;
     const pathFor = (points, px, py) => points.map(([x, y], i) =>
       (i ? 'L' : 'M') + px(x).toFixed(2) + ' ' + py(y).toFixed(2)).join('');
@@ -1487,16 +1490,17 @@ globalThis.liftPlacings = liftPlacings;
       const width = Math.round(figure.getBoundingClientRect().width);
       if (width < 120 || width === previousWidth) return;
       previousWidth = width;
-      let height = Math.max(224, Math.min(337, Math.round(width * .41)));
-      if (compact) {
-        height = isGL ? Math.max(160, Math.min(186, Math.round(width * .39)))
-          : hasKDE ? Math.max(128, Math.min(152, Math.round(width * .33))) : 111;
-      }
+      // A class chart accompanies every results table. The overall density comparison has more room.
+      const [minHeight, maxHeight] = singleMeet
+        ? (isGL ? [224, 286] : hasKDE ? [196, 246] : [166, 202])
+        : (isGL ? [248, 374] : [234, 350]);
+      const height = Math.round(Math.min(maxHeight, Math.max(minHeight, width * .36)));
       const yStep = niceStep(ymax / 4);
       const labelDigits = String(Number(yStep.toPrecision(7))).length;
-      const left = compact ? Math.max(43, labelDigits * 7 + 23) : Math.max(width < 470 ? 52 : 68, labelDigits * 8 + 28);
-      const right = width - (compact ? 22 : width < 470 ? 12 : 26);
-      const top = compact ? 8 : 17, bottom = height - (compact ? 35 : 48);
+      const narrow = width < 470;
+      const left = Math.max(narrow ? 48 : 64, labelDigits * (narrow ? 7 : 8) + 27);
+      const right = width - (narrow ? 24 : 33);
+      const top = narrow ? 13 : 18, bottom = height - (narrow ? 44 : 51);
       const px = value => left + (value - layout.xmin) / (layout.xmax - layout.xmin) * (right - left);
       const py = value => bottom - (value / ymax) * (bottom - top);
       const svg = svgElement('svg', {viewBox: '0 0 ' + width + ' ' + height, role: 'img',
@@ -1511,11 +1515,12 @@ globalThis.liftPlacings = liftPlacings;
         }
         return result;
       };
-      for (const y of ticks(0, ymax, compact && height < 160 ? 3 : 4)) {
+      for (const y of ticks(0, ymax, 4)) {
         if (y) svg.append(svgElement('line', {x1: left, x2: right, y1: py(y), y2: py(y), class: 'rd-gridline'}));
         svg.append(svgElement('text', {x: left - 7, y: py(y) + 4, 'text-anchor': 'end', class: 'rd-tick'}, y));
       }
-      for (const x of ticks(layout.xmin, layout.xmax, width < 470 ? 4 : 7)) {
+      const xTickTarget = Math.max(2, Math.min(8, Math.floor((right - left) / (narrow ? 52 : 95))));
+      for (const x of ticks(layout.xmin, layout.xmax, xTickTarget)) {
         svg.append(svgElement('text', {x: px(x), y: bottom + 17, 'text-anchor': 'middle', class: 'rd-tick'}, x));
       }
       for (const [i, estimate] of estimates.entries()) {
@@ -1548,7 +1553,7 @@ globalThis.liftPlacings = liftPlacings;
         }
       }
       svg.append(svgElement('path', {d: 'M' + left + ' ' + top + 'V' + bottom + 'H' + right, class: 'rd-axis'}));
-      svg.append(svgElement('text', {x: (left + right) / 2, y: height - (compact ? 3 : 7), 'text-anchor': 'middle', class: 'rd-axis-label'}, xLabel));
+      svg.append(svgElement('text', {x: (left + right) / 2, y: height - 7, 'text-anchor': 'middle', class: 'rd-axis-label'}, xLabel));
       const yCenter = (top + bottom) / 2;
       svg.append(svgElement('text', {x: 13, y: yCenter, transform: 'rotate(-90 13 ' + yCenter + ')',
         'text-anchor': 'middle', class: 'rd-axis-label'}, t('概率密度', 'Density')));
@@ -1571,36 +1576,31 @@ globalThis.liftPlacings = liftPlacings;
     return link;
   }
 
-  function classDistribution(host, {values, gender, weightClass, metric, en, contextTitle, compact}) {
+  function classDistribution(host, {values, gender, weightClass, metric, en, contextTitle, singleMeet}) {
     const label = names[metric][Number(en)];
     return chart(host, [{label, gender, color: 'blue', values}], {
-      en, isGL: false, xLabel: label + ' (kg)', contextTitle, compact, refineBandwidth: metric === 'total',
+      en, isGL: false, xLabel: label + ' (kg)', contextTitle, singleMeet, refineBandwidth: metric === 'total',
       median: gender === 'F' && metric === 'total' && ['69', '76', '84'].includes(weightClass)
     });
   }
 
-  function glDistribution(host, rows, en, contextTitle, compact = false) {
+  function glDistribution(host, rows, en, contextTitle, singleMeet, note) {
     const samples = ['M', 'F'].map(gender => ({
       label: names[gender][Number(en)], gender, color: gender === 'M' ? 'blue' : 'orange',
       values: bestByAthlete(rows.filter(row => row.gender === gender), 'gl').map(row => row.gl)
     }));
-    return chart(host, samples, {en, isGL: true, xLabel: names.gl[Number(en)], contextTitle, compact});
+    return chart(host, samples, {en, isGL: true, xLabel: names.gl[Number(en)], contextTitle, singleMeet, note});
   }
 
   function renderMeet({language, metric, classCharts, glChart}) {
     const en = language === 'en';
     const plots = new Map();
-    function panel(host, className, title, draw) {
+    function panel(host, className, draw) {
       const section = element('section', 'rd-section rd-meet-section ' + className);
-      const header = element('div', 'rd-header');
-      header.append(element('h3', '', title));
       const figure = element('div', 'rd-figure');
       section.append(figure);
       host.replaceChildren(section);
       plots.set(figure, draw(figure));
-      const legend = figure.querySelector('.rd-legend');
-      if (legend) header.append(legend);
-      figure.prepend(header);
       return section;
     }
     for (const {host, gender, weightClass, rows} of classCharts) {
@@ -1609,12 +1609,12 @@ globalThis.liftPlacings = liftPlacings;
       const distribution = en ? lift + ' distribution' : lift + (metric === 'total' ? '分布' : '成绩分布');
       const title = group.concat(distribution).join(' · ');
       const values = rows.map(row => row[metric]).filter(value => Number.isFinite(value) && value > 0);
-      const section = panel(host, 'meet-class-distribution', title, figure =>
-        classDistribution(figure, {values, gender, weightClass, metric, en, contextTitle: title, compact: true}));
+      const section = panel(host, 'meet-class-distribution', figure =>
+        classDistribution(figure, {values, gender, weightClass, metric, en, contextTitle: title, singleMeet: true}));
       Object.assign(section.dataset, {gender, class: weightClass || '', metric});
     }
     const title = en ? 'Meet GL points distribution' : '本场GL系数分布';
-    const section = panel(glChart.host, 'meet-gl-distribution', title, figure => glDistribution(figure, glChart.rows, en, title, true));
+    const section = panel(glChart.host, 'meet-gl-distribution', figure => glDistribution(figure, glChart.rows, en, title, true));
     section.dataset.metric = 'gl';
 
     const drawAll = () => { for (const draw of plots.values()) draw(); };
@@ -1671,10 +1671,13 @@ globalThis.liftPlacings = liftPlacings;
       state.seed = seed;
     }
 
-    const section = (zh, english, description) => {
+    const section = (zh, english, description, control) => {
       const pane = element('section', 'rd-section');
       const header = element('div', 'rd-header');
-      header.append(element('h3', '', t(zh, english)), element('p', '', description));
+      const tools = element('div', 'rd-chart-heading');
+      tools.append(element('p', '', description));
+      if (control) tools.append(control);
+      header.append(element('h3', 'section-bar', t(zh, english)), tools);
       pane.append(header);
       container.append(pane);
       return pane;
@@ -1695,23 +1698,24 @@ globalThis.liftPlacings = liftPlacings;
     const tableWrap = element('div', 'rd-table-wrap');
     recordsPane.append(fields, tableWrap);
 
-    const classPane = section('级别成绩分布', 'Weight-class distribution', t('每位运动员取该级别、该项目的个人最好成绩。', 'One personal best per athlete for the selected weight class and lift.'));
-    const classHead = element('div', 'rd-chart-heading');
-    const classTitle = element('h4');
-    classHead.append(classTitle);
     const measure = selectField(t('成绩指标', 'Measure'), 'record-measure');
     if (!benchOnly) {
       for (const key of ['total', 'squat', 'bench', 'deadlift']) measure.select.add(new Option(title(key), key));
       measure.select.value = state.metric;
-      classHead.append(measure.field);
     }
+    const classPane = section('级别成绩分布', 'Weight-class distribution',
+      t('每位运动员取该级别、该项目的个人最好成绩。', 'One personal best per athlete for the selected weight class and lift.'),
+      benchOnly ? null : measure.field);
     const classChart = element('div', 'rd-figure');
-    classPane.append(classHead, classChart);
-    const glPane = section('GL系数分布', 'GL points distribution', t('每位运动员取本项目最高GL系数，男女分别按概率密度绘制。', 'One best GL score per athlete in this discipline. Densities are normalized separately for men and women.'));
+    classPane.append(classChart);
+    const glPane = element('section', 'rd-section');
     const glChart = element('div', 'rd-figure');
     glPane.append(glChart);
+    container.append(glPane);
     let drawClass = () => {};
-    const drawGL = glDistribution(glChart, raw, en, t('GL系数分布', 'GL points distribution'));
+    const drawGL = glDistribution(glChart, raw, en, t('GL系数分布', 'GL points distribution'), false,
+      t('每位运动员取本项目最高GL系数，男女分别按概率密度绘制。',
+        'One best GL score per athlete in this discipline. Densities are normalized separately for men and women.'));
 
     function showClass(refreshTable) {
       const g = gender.select.value;
@@ -1779,9 +1783,9 @@ globalThis.liftPlacings = liftPlacings;
             : t('含男子53 kg级成绩。', 'Includes the men’s 53 kg class.')));
         }
       }
-      classTitle.textContent = [title(g), wc ? wc + ' kg' : '', title(metric)].filter(Boolean).join(' · ');
+      const classTitle = [title(g), wc ? wc + ' kg' : '', title(metric)].filter(Boolean).join(' · ');
       drawClass = classDistribution(classChart, {values: bestByAthlete(rows, metric).map(row => row[metric]),
-        gender: g, weightClass: wc, metric, en, contextTitle: classTitle.textContent});
+        gender: g, weightClass: wc, metric, en, contextTitle: classTitle});
       drawClass();
     }
 
