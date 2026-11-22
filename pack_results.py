@@ -21,6 +21,9 @@ BASIS = {'赛事成绩表': 'official', '来宾，无正式名次': 'guest', '':
 GL = {'SBD': {'M': (1199.72839, 1025.18162, .00921), 'F': (610.32796, 1045.59282, .03048)},
       'B': {'M': (320.98041, 281.40258, .01008), 'F': (142.40398, 442.52671, .04724)}}
 DISCIPLINES = ('SBD','B')
+STATUS_COLUMN = '完赛状态'
+STATUS_LABELS = {'': None, '完赛': None, 'DNF': 'DNF', '未完赛 / DNF': 'DNF',
+                 'OVERWEIGHT': 'OVERWEIGHT', '称重超重 / Overweight': 'OVERWEIGHT'}
 CHINA = {'chn','china','中国'}
 EXCLUDED_NAMES = {
     'bbcac730ccbda6bb34793d2e6fec8cd0b6af2e11508355849fe0533429c176e4',
@@ -67,6 +70,7 @@ def parse_row(c, metadata):
         raise ValueError('Missing identity, excluded athlete or missing competition')
     gender = {'男':'M','女':'F'}[c['性别']]
     event = {'卧推举单项':'B','力量举三项':'SBD'}[c['比赛项目']]
+    status = STATUS_LABELS[c.get(STATUS_COLUMN, '')]
     meet_type = {'国内赛':'domestic','国际赛':'international'}[c['赛事类别']]
     eligible = {'是':True, '否':False}[c['纳入总榜']]
     team = c['代表队']
@@ -92,17 +96,22 @@ def parse_row(c, metadata):
     weight_class = MERGED.get((gender,actual),actual)
     bw, squat, bench, deadlift, total, gl = [number(c[k]) for k in (
         '体重(kg)','蹲举(kg)','卧推举(kg)','硬举(kg)','总成绩(kg)','IPF GL系数')]
-    if not bench or (event=='SBD' and (not all((squat,deadlift,total)) or abs(squat+bench+deadlift-total)>.011)
-                     or event=='B' and any(x is not None for x in (squat,deadlift,total))):
-        raise ValueError('Incomplete or inconsistent performance')
-    if gl is None and bw:
-        a,b,k = GL[event][gender]
-        score = 100*(bench if event=='B' else total)/(a-b*math.exp(-k*bw))
-        if not math.isfinite(score) or score <= 0:
-            raise ValueError('Cannot calculate GL points from bodyweight')
-        gl = math.floor(score*100+.5)/100
-    if eligible and not (bw and gl):
-        raise ValueError('Missing ranked bodyweight or GL points')
+    if event == 'B' and any(x is not None for x in (squat, deadlift, total)):
+        raise ValueError('Bench-only record contains lifts or total from powerlifting')
+    if status:
+        if total is not None or gl is not None or c['级别名次'] or c['各组别名次']:
+            raise ValueError(f'{status} must have empty total, GL and placings')
+    else:
+        if not bench or (event == 'SBD' and (not all((squat, deadlift, total)) or abs(squat+bench+deadlift-total) > .011)):
+            raise ValueError('Incomplete or inconsistent performance')
+        if gl is None and bw:
+            a,b,k = GL[event][gender]
+            score = 100*(bench if event=='B' else total)/(a-b*math.exp(-k*bw))
+            if not math.isfinite(score) or score <= 0:
+                raise ValueError('Cannot calculate GL points from bodyweight')
+            gl = math.floor(score*100+.5)/100
+        if eligible and not (bw and gl):
+            raise ValueError('Missing ranked bodyweight or GL points')
     place=number(c['级别名次'])
     if place is not None and not isinstance(place,int):
         raise ValueError('Invalid placing')
@@ -123,6 +132,8 @@ def parse_row(c, metadata):
              weight_class=weight_class,bodyweight=bw,squat=squat,bench=bench,deadlift=deadlift,total=total,
              gl=gl,rankings_eligible=eligible,
              record_federation=c.get('赛事认证机构',metadata.get('recordFederations',{}).get(mid,'')))
+    if status:
+        row['status'] = status
     if team:
         row['team']=team
     if actual!=weight_class:
@@ -170,13 +181,17 @@ def gl_preview(rows):
         return (row['gl'], row['total'] or row['bench'], -(row['bodyweight'] or math.inf))
     for gender in ('M','F'):
         people={}
+        appeared=set()
         for r in rows:
-            if r['gender']!=gender or r['gl'] is None:
+            if r['gender']!=gender:
+                continue
+            appeared.add(r['athlete_id'])
+            if r['gl'] is None:
                 continue
             best=people.get(r['athlete_id'])
             if best is None or performance(r)>performance(best):
                 people[r['athlete_id']]=r
-        counts[gender]=len(people)
+        counts[gender]=len(appeared)
         ranked=sorted(people.values(),key=lambda r:(-r['gl'],r['name_sort']))
         result.extend(ranked[:25])
     return {'rows':result,'counts':counts}
@@ -229,7 +244,10 @@ def pack(csv_path, metadata, output):
             continue
         bucket['profiles'][key]={'file':asset('athlete',group),'ids':[r['record_id'] for r in group]}
         classes=sorted({r['weight_class'] for r in group},key=lambda c:(float(c.rstrip('+')),c.endswith('+')))
-        record={k:group[0][k] for k in SEARCH_FIELDS}
+        representative = next((r for r in group if not r.get('status')), group[0])
+        record={k:representative[k] for k in SEARCH_FIELDS}
+        if representative.get('status'):
+            record['status'] = representative['status']
         search.append({'record':record,'classes':classes,'aliases':list(aliases)})
     scope_rows={}
     ranking={d:[] for d in DISCIPLINES}
