@@ -209,6 +209,7 @@ def gl_preview(rows):
 def pack(csv_path, metadata, output):
     rows=load_rows(csv_path,metadata)
     countries=metadata.get('athleteCountries',{})
+    additional_profiles=set(metadata.get('additionalAthleteProfiles', ()))
     people=defaultdict(list)
     competitions=defaultdict(lambda:defaultdict(list))
     entries=defaultdict(set)
@@ -232,7 +233,7 @@ def pack(csv_path, metadata, output):
         return file.relative_to(output).as_posix()
     for key, group in people.items():
         country=countries.get(key)
-        available=any((r.get('team','').lower() in CHINA if r['meet_type']=='international' else
+        available=key in additional_profiles or any((r.get('team','').lower() in CHINA if r['meet_type']=='international' else
                        (country.lower() in CHINA if country else r['rankings_eligible'] or r.get('status')=='NS')) for r in group)
         aliases=dict.fromkeys(a for r in group for a in r['alternate_names'])
         for r in group[1:]:
