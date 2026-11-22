@@ -1,0 +1,53 @@
+name: Publish IPFcn results
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ipfcn-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build competition and athlete data
+        run: |
+          mkdir -p dist/static
+          cp -R static/. dist/static/
+          cp IPFcn-results.csv dist/
+          if [ -f CNAME ]; then cp CNAME dist/; fi
+          python3 pack_results.py --csv IPFcn-results.csv --metadata results-metadata.json --output dist
+          python3 - <<'PY'
+          from pathlib import Path
+          template = Path('site-template.html').read_text(encoding='utf-8')
+          if template.count('__CATALOG__') != 1:
+              raise ValueError('The template must contain a single catalog placeholder')
+          catalog = Path('dist/assets/data/catalog.json').read_text(encoding='utf-8')
+          template = template.replace('__CATALOG__', catalog.replace('<', r'\u003c'))
+          Path('dist/index.html').write_text(template, encoding='utf-8')
+          PY
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publish.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: publish
+        uses: actions/deploy-pages@v4
