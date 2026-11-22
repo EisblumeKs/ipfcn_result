@@ -89,23 +89,18 @@ function createResultStore(catalog) {
     }
     return rowsByEvent.get(event).sort((a, b) => a.source_order - b.source_order);
   }
-  let chartScript;
-  function charts() {
-    if (window.IPFcnRecords) return;
-    if (!chartScript) {
-      chartScript = new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = document.getElementById('site-app').dataset.charts;
-        script.onload = resolve;
-        script.onerror = () => {
-          chartScript = undefined;
-          script.remove();
-          reject(new Error('Chart library unavailable'));
-        };
-        document.head.append(script);
-      });
-    }
-    return chartScript;
+  const scripts = new Map();
+  function loadScript(name) {
+    return once(scripts, name, () => new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = document.getElementById('site-app').dataset[name];
+      script.onload = resolve;
+      script.onerror = () => {
+        script.remove();
+        reject(new Error('Could not load ' + name));
+      };
+      document.head.append(script);
+    }));
   }
   async function archive(id) {
     let bucket = 0;
@@ -202,11 +197,13 @@ function createResultStore(catalog) {
       return selected.flatMap(year => seasonRows(discipline, year, meetType)).sort((a, b) => a.source_order - b.source_order);
     });
   }
-  return {meets, archive, meetRows, disciplineFor, preview, charts, ranks,
+  return {meets, archive, meetRows, disciplineFor, preview, ranks,
+    charts: () => window.IPFcnRecords ? undefined : loadScript('charts'),
+    chartProbe: () => loadScript('probe'),
     scopes: () => json(assets.scopes), search: () => json(assets.search)};
 }
 </script>
-  <script id="site-app" defer src="static/app-5f817babaf591d42f96fe3cb.js" data-charts="static/charts-ac3638c7dfe8775e0dda9279.js"></script>
+  <script id="site-app" defer src="static/app-5f817babaf591d42f96fe3cb.js" data-charts="static/charts-4471844e3bd0a7545840fdac.js" data-probe="static/chart-probe-e13eef2d3717816cdf693dd2.js"></script>
   <script>
     window.IPFcnCatalog = JSON.parse(document.getElementById('catalog').textContent);
     window.IPFcnData = createResultStore(window.IPFcnCatalog);
@@ -235,7 +232,7 @@ function createResultStore(catalog) {
       }
     })();
   </script>
-  <link rel="stylesheet" href="static/site-039501065574d08a4eb783ae.css">
+  <link rel="stylesheet" href="static/site-2aae3ea7797cb4dd38e97d5e.css">
   <script>
     (() => {
       const key = 'ipfcn_result.theme';
