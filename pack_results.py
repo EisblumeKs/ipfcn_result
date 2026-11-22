@@ -23,7 +23,8 @@ GL = {'SBD': {'M': (1199.72839, 1025.18162, .00921), 'F': (610.32796, 1045.59282
 DISCIPLINES = ('SBD','B')
 STATUS_COLUMN = '完赛状态'
 STATUS_LABELS = {'': None, '完赛': None, 'DNF': 'DNF', '未完赛 / DNF': 'DNF',
-                 'OVERWEIGHT': 'OVERWEIGHT', '称重超重 / Overweight': 'OVERWEIGHT'}
+                 'OVERWEIGHT': 'OVERWEIGHT', '称重超重 / Overweight': 'OVERWEIGHT',
+                 'NS': 'NS', '未到场 / NS': 'NS'}
 CHINA = {'chn','china','中国'}
 EXCLUDED_NAMES = {
     'bbcac730ccbda6bb34793d2e6fec8cd0b6af2e11508355849fe0533429c176e4',
@@ -91,7 +92,9 @@ def parse_row(c, metadata):
         last = end
     weight_class = c['榜单级别(kg)']
     actual = c['名次所属级别(kg)'] or weight_class
-    if not all(re.fullmatch(r'[1-9]\d*(?:\.\d+)?\+?',k) for k in (weight_class,actual)):
+    if (weight_class or actual or status != 'NS') and not all(
+        re.fullmatch(r'[1-9]\d*(?:\.\d+)?\+?', k) for k in (weight_class,actual)
+    ):
         raise ValueError('Invalid weight class')
     weight_class = MERGED.get((gender,actual),actual)
     bw, squat, bench, deadlift, total, gl = [number(c[k]) for k in (
@@ -101,6 +104,8 @@ def parse_row(c, metadata):
     if status:
         if total is not None or gl is not None or c['级别名次'] or c['各组别名次']:
             raise ValueError(f'{status} must have empty total, GL and placings')
+        if status == 'NS' and (eligible or any(x is not None for x in (squat,bench,deadlift))):
+            raise ValueError('A no-show cannot have lifts or be included in rankings')
     else:
         if not bench or (event == 'SBD' and (not all((squat, deadlift, total)) or abs(squat+bench+deadlift-total) > .011)):
             raise ValueError('Incomplete or inconsistent performance')
@@ -134,6 +139,10 @@ def parse_row(c, metadata):
              record_federation=c.get('赛事认证机构',metadata.get('recordFederations',{}).get(mid,'')))
     if status:
         row['status'] = status
+    if status == 'NS':
+        divisions = list(dict.fromkeys(d.strip() for d in row['age_division'].split(' / ') if d.strip()))
+        if len(divisions) > 1:
+            row['registration_divisions'] = divisions
     if team:
         row['team']=team
     if actual!=weight_class:
@@ -224,7 +233,7 @@ def pack(csv_path, metadata, output):
     for key, group in people.items():
         country=countries.get(key)
         available=any((r.get('team','').lower() in CHINA if r['meet_type']=='international' else
-                       (country.lower() in CHINA if country else r['rankings_eligible'])) for r in group)
+                       (country.lower() in CHINA if country else r['rankings_eligible'] or r.get('status')=='NS')) for r in group)
         aliases=dict.fromkeys(a for r in group for a in r['alternate_names'])
         for r in group[1:]:
             for field in ('name','name_sort','name_en'):
@@ -243,7 +252,7 @@ def pack(csv_path, metadata, output):
             bucket['foreign'].append(key)
             continue
         bucket['profiles'][key]={'file':asset('athlete',group),'ids':[r['record_id'] for r in group]}
-        classes=sorted({r['weight_class'] for r in group},key=lambda c:(float(c.rstrip('+')),c.endswith('+')))
+        classes=sorted({r['weight_class'] for r in group if r['weight_class']},key=lambda c:(float(c.rstrip('+')),c.endswith('+')))
         representative = next((r for r in group if not r.get('status')), group[0])
         record={k:representative[k] for k in SEARCH_FIELDS}
         if representative.get('status'):
