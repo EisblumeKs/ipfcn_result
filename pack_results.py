@@ -9,6 +9,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 COLUMNS = [
     '成绩ID','运动员ID','姓名','拼音或排序名','其他姓名','性别','年份','赛事类别','代表队','纳入总榜','赛事名称','赛事英文名','赛事ID',
@@ -35,6 +36,13 @@ MERGED = {('M', '53'): '59', ('F', '43'): '47', ('F', '72'): '76'}
 MEET_FIELDS = ('meet_id','meet_name','meet_name_en','year','meet_type','meet_start','meet_end','meet_date','date_precision')
 SEARCH_FIELDS = ('record_id','athlete_id','name','name_sort','name_en','gender','year','discipline','total','bench','has_profile')
 SCOPE_FIELDS = ('year','meet_type','discipline','gender','weight_class','division')
+# Established two-character surnames. Athlete-specific spellings in metadata take precedence.
+COMPOUND_SURNAMES = set((
+    '欧阳 歐陽 司马 司馬 上官 诸葛 諸葛 夏侯 皇甫 司徒 司空 慕容 令狐 宇文 长孙 長孫 尉迟 尉遲 '
+    '公孙 公孫 东方 東方 南宫 南宮 司寇 闻人 聞人 钟离 鍾離 端木 百里 仲孙 仲孫 呼延 褚师 褚師 '
+    '轩辕 軒轅 独孤 獨孤 公羊 公冶 鲜于 鮮于 公输 公輸 澹台 万俟 萬俟 微生'
+).split())
+ALTERNATE_HAN_NAME = re.compile(r'([\u3400-\u9fff·]+)\s*[（(]([\u3400-\u9fff·]+)[）)]')
 
 
 def encoded(obj):
@@ -49,10 +57,28 @@ def english_name(name, sort):
         return name
     if '·' in name:
         return ' '.join(part.replace(' ', '').title() for part in sort.split('·'))
-    if len(name)>3 and not name.startswith('欧阳'):
-        return ' '.join(word.title() for word in words)
-    end = 2 if name.startswith('欧阳') else 1
+    end = 2 if name[:2] in COMPOUND_SURNAMES else 1
     return ' '.join(filter(None, [''.join(words[end:]).title(), ''.join(words[:end]).title()]))
+
+
+def domestic_meet_titles(mid, year, zh, en):
+    titles = {}
+    for lang, original in (('zh', zh), ('en', en)):
+        title = re.sub(rf'^{year}\s*(?:年\s*)?', '', original, count=1)
+        title = re.sub(r'IPF(?:cn)?(?![A-Za-z])', 'IPFcn', title, flags=re.I)
+        if lang == 'zh':
+            title = re.sub(r'IPFcn\s*力量举', 'IPFcn', title)
+        elif mid == 'ipfcn-greater-bay-2025':
+            title = ('IPFcn Guangdong-Hong Kong-Macao Greater Bay Area Powerlifting Invitational '
+                     'and 3rd Southern University Cup Powerlifting Invitational')
+        if 'IPFcn' not in title:
+            # Retain the archive's edition-before-federation convention.
+            if lang == 'zh':
+                title = re.sub(r'^(第[一二三四五六七八九十百零〇两\d]+届)?', r'\1IPFcn', title, count=1)
+            else:
+                title = re.sub(r'^(\d+(?:st|nd|rd|th)\s+)?', r'\1IPFcn ', title, count=1, flags=re.I)
+        titles[lang] = str(year) + ('年' if lang == 'zh' else ' ') + title
+    return titles
 
 
 def number(value):
@@ -66,6 +92,13 @@ def number(value):
 
 def parse_row(c, metadata):
     name, aid, rid, mid = (c[k] for k in ('姓名','运动员ID','成绩ID','赛事ID'))
+    sort = c['拼音或排序名'] or name
+    source_spellings = []
+    alternatives = ALTERNATE_HAN_NAME.fullmatch(name.strip())
+    if alternatives:
+        source_spellings = [name, alternatives[2]]
+        name = alternatives[1]
+        sort = re.split(r'\s*[（(]', sort, maxsplit=1)[0].strip() or name
     norm=unicodedata.normalize('NFKC',name).strip()
     if not all((name,aid,rid,mid,c['赛事名称'])) or hashlib.sha256(norm.encode()).hexdigest() in EXCLUDED_NAMES:
         raise ValueError('Missing identity, excluded athlete or missing competition')
@@ -117,6 +150,13 @@ def parse_row(c, metadata):
             gl = math.floor(score*100+.5)/100
         if eligible and not (bw and gl):
             raise ValueError('Missing ranked bodyweight or GL points')
+    meet_name = c['赛事名称']
+    meet_name_en = c['赛事英文名'] or meet_name
+    if meet_type == 'domestic':
+        if not c['赛事英文名']:
+            meet_name_en = metadata.get('meets', {}).get(mid, {}).get('en') or meet_name
+        titles = domestic_meet_titles(mid, year, meet_name, meet_name_en)
+        meet_name, meet_name_en = titles['zh'], titles['en']
     place=number(c['级别名次'])
     if place is not None and not isinstance(place,int):
         raise ValueError('Invalid placing')
@@ -127,11 +167,10 @@ def parse_row(c, metadata):
         if not match:
             raise ValueError('Invalid division placing: '+part)
         places.append({'division':match[1], 'place':int(match[2])})
-    sort=c['拼音或排序名'] or name
     row=dict(record_id=rid,athlete_id=aid,name=name,name_sort=sort,
              name_en=metadata.get('athletes',{}).get(aid) or english_name(name,sort),
              gender=gender,year=year,discipline=event,equipment='Raw',meet_type=meet_type,
-             meet_id=mid,meet_name=c['赛事名称'],meet_name_en=c['赛事英文名'] or c['赛事名称'],
+             meet_id=mid,meet_name=meet_name,meet_name_en=meet_name_en,
              meet_start=start,meet_end=end,meet_date=day or start,age_division=c['报名年龄组'],
              division=division,class_place=place,place_basis=BASIS[c['名次依据']],
              weight_class=weight_class,bodyweight=bw,squat=squat,bench=bench,deadlift=deadlift,total=total,
@@ -153,12 +192,12 @@ def parse_row(c, metadata):
         row['date_precision']='year'
     if places and places!=[{'division':division, 'place':place}]:
         row['class_places']=places
-    raw_aliases=[*c['其他姓名'].split(' / '), *metadata.get('aliases',{}).get(gender+'/'+aid,[])]
+    raw_aliases=[*c['其他姓名'].split(' / '), *metadata.get('aliases',{}).get(gender+'/'+aid,[]), *source_spellings]
     row['alternate_names']=list(dict.fromkeys(x for x in raw_aliases if x))
     return row
 
 
-def load_rows(csv_path,metadata):
+def load_rows(csv_path,metadata,changed_titles=None):
     rows=[]
     ids=set()
     with csv_path.open(encoding='utf-8-sig',newline='') as f:
@@ -176,6 +215,10 @@ def load_rows(csv_path,metadata):
                 ids.add(row['record_id'])
                 row['source_order']=len(rows)
                 rows.append(row)
+                if changed_titles is not None and row['meet_type']=='domestic':
+                    titles=(row['meet_name'],row['meet_name_en'])
+                    if titles!=(c['赛事名称'],c['赛事英文名']):
+                        changed_titles[row['record_id']]=titles
             except (ValueError,KeyError) as exc:
                 raise ValueError(f'CSV row {data.line_num}: {exc}') from exc
     if not rows:
@@ -207,7 +250,8 @@ def gl_preview(rows):
 
 
 def pack(csv_path, metadata, output):
-    rows=load_rows(csv_path,metadata)
+    changed_titles={}
+    rows=load_rows(csv_path,metadata,changed_titles)
     countries=metadata.get('athleteCountries',{})
     additional_profiles=set(metadata.get('additionalAthleteProfiles', ()))
     people=defaultdict(list)
@@ -334,6 +378,21 @@ def pack(csv_path, metadata, output):
              'previousAthleteIds':metadata.get('previousAthleteIds',{}),
              'recordFederations':{mid:next(iter(events.values()))[0]['record_federation']
                                   for mid,events in competitions.items()}}
+    if changed_titles:
+        destination=output/'IPFcn-results.csv'
+        with TemporaryDirectory(dir=output) as staging:
+            updated=Path(staging)/destination.name
+            with csv_path.open(encoding='utf-8-sig', newline='') as source, updated.open(
+                    'w', encoding='utf-8-sig', newline='') as handle:
+                reader=csv.DictReader(source)
+                writer=csv.DictWriter(handle, reader.fieldnames)
+                writer.writeheader()
+                for values in reader:
+                    titles=changed_titles.get(values['成绩ID'].strip())
+                    if titles:
+                        values['赛事名称'],values['赛事英文名']=titles
+                    writer.writerow(values)
+            updated.replace(destination)
     (directory/'catalog.json').write_bytes(encoded(catalog))
     return catalog
 
