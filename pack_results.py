@@ -321,6 +321,10 @@ def pack(csv_path, metadata, output):
         if any(any(row[k]!=first[k] for k in identity) for group in events.values() for row in group):
             raise ValueError(f'Conflicting venue, dates, titles or federation for {mid}')
         meet={k:first[k] for k in MEET_FIELDS if k in first}
+        details = metadata.get('meets', {}).get(mid, {})
+        for field in ('location', 'location_en'):
+            if details.get(field):
+                meet[field] = details[field]
         meet['disciplines']=[d for d in DISCIPLINES if d in events]
         meet['counts']={d:len(events.get(d,[])) for d in DISCIPLINES}
         if metadata.get('meetAliases',{}).get(mid):
