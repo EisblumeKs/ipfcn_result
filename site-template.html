@@ -203,7 +203,7 @@ function createResultStore(catalog) {
     scopes: () => json(assets.scopes), search: () => json(assets.search)};
 }
 </script>
-  <script id="site-app" defer src="static/app-fa8b6f6f5a0b77d41a05dd73.js" data-charts="static/charts-41e2636b4fc10f851905761d.js" data-probe="static/chart-probe-561412ab085d78ff1c017c31.js"></script>
+  <script id="site-app" defer src="static/app-60bdc3991610e382d172c181.js" data-charts="static/charts-41e2636b4fc10f851905761d.js" data-probe="static/chart-probe-561412ab085d78ff1c017c31.js"></script>
   <script>
     window.IPFcnCatalog = JSON.parse(document.getElementById('catalog').textContent);
     window.IPFcnData = createResultStore(window.IPFcnCatalog);
@@ -232,7 +232,7 @@ function createResultStore(catalog) {
       }
     })();
   </script>
-  <link rel="stylesheet" href="static/site-880debb90eddad6e6bfcc067.css">
+  <link rel="stylesheet" href="static/site-23817a9759939af88e68dd80.css">
   <script>
     (() => {
       const key = 'ipfcn_result.theme';
@@ -285,7 +285,11 @@ function createResultStore(catalog) {
           <img class="mark-light" data-src="static/ipf-china-d0fcada6781c8881f32abe9d.webp" width="263" height="195" alt="">
           <img class="mark-dark" data-src="static/ipf-china-dark-9247165e4ade932db758bd02.webp" width="263" height="195" alt="">
         </span>
-        <div class="mast-title-copy"><h1 id="page-heading" data-i18n-en="IPFcn Competition Results">IPFcn比赛成绩查询系统</h1><p id="page-subtitle" class="secondary-copy" lang="en">IPFcn COMPETITION RESULTS</p></div>
+        <div class="mast-title-copy">
+          <h1 id="page-heading" data-i18n-en="IPFcn Competition Results">IPFcn比赛成绩查询系统</h1>
+          <p id="page-subtitle" class="secondary-copy" lang="en">IPFcn COMPETITION RESULTS</p>
+          <div class="meet-details"><span id="meet-location"></span><span id="meet-date"></span></div>
+        </div>
         <span class="home-mark" role="img" aria-label="China Powerlifting">
           <img class="mark-light" data-src="static/china-powerlifting-9dcf7d8608caa77bd9c60bdc.webp" width="319" height="217" alt="">
           <img class="mark-dark" data-src="static/china-powerlifting-dark-cfcee0efdf6889c8e36e6a13.webp" width="319" height="217" alt="">
@@ -354,9 +358,8 @@ function createResultStore(catalog) {
       <section class="ranking-section" id="athlete-records"></section>
     </div>
     <div id="meet-view" hidden>
-      <nav class="archive-nav meet-nav" aria-label="单场赛事导航" data-i18n-en-aria-label="Meet navigation">
+      <nav class="archive-nav" aria-label="单场赛事导航" data-i18n-en-aria-label="Meet navigation">
         <a id="meet-back" href="#"><span data-i18n-en="← Back to rankings">← 返回排行榜</span> <small lang="en">RANKINGS</small></a>
-        <span id="meet-date"></span>
       </nav>
       <div class="ranking-toolbar meet-toolbar" role="group" aria-label="单场赛事工具" data-i18n-en-aria-label="Competition tools">
         <div class="ranking-modes" id="meet-sort" role="group" aria-label="排名视图" data-i18n-en-aria-label="Ranking view">
