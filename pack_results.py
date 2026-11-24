@@ -1,11 +1,11 @@
 """Build immutable, on-demand assets for the IPFcn rankings using the owner-maintained public CSV."""
+from build_analytics import build_analytics
 import argparse
 import csv
 import hashlib
 import json
 import math
 import re
-import unicodedata
 from collections import Counter, defaultdict
 from datetime import date
 from pathlib import Path
@@ -27,11 +27,6 @@ STATUS_LABELS = {'': None, '完赛': None, 'DNF': 'DNF', '未完赛 / DNF': 'DNF
                  'OVERWEIGHT': 'OVERWEIGHT', '称重超重 / Overweight': 'OVERWEIGHT',
                  'NS': 'NS', '未到场 / NS': 'NS'}
 CHINA = {'chn','china','中国'}
-EXCLUDED_NAMES = {
-    'bbcac730ccbda6bb34793d2e6fec8cd0b6af2e11508355849fe0533429c176e4',
-    '828696096502bde0d51d5e31a7abbae677180271630484a2ae8abc250b629f20',
-    'f4a5a28934281ede19fbfccfb65b4ecbba5a95b63c63207f96b24cb1f5e4e80f',
-}
 MERGED = {('M', '53'): '59', ('F', '43'): '47', ('F', '72'): '76'}
 MEET_FIELDS = ('meet_id','meet_name','meet_name_en','year','meet_type','meet_start','meet_end','meet_date','date_precision')
 SEARCH_FIELDS = ('record_id','athlete_id','name','name_sort','name_en','gender','year','discipline','total','bench','has_profile')
@@ -99,9 +94,8 @@ def parse_row(c, metadata):
         source_spellings = [name, alternatives[2]]
         name = alternatives[1]
         sort = re.split(r'\s*[（(]', sort, maxsplit=1)[0].strip() or name
-    norm=unicodedata.normalize('NFKC',name).strip()
-    if not all((name,aid,rid,mid,c['赛事名称'])) or hashlib.sha256(norm.encode()).hexdigest() in EXCLUDED_NAMES:
-        raise ValueError('Missing identity, excluded athlete or missing competition')
+    if not all((name,aid,rid,mid,c['赛事名称'])):
+        raise ValueError('Missing identity or missing competition')
     gender = {'男':'M','女':'F'}[c['性别']]
     event = {'卧推举单项':'B','力量举三项':'SBD'}[c['比赛项目']]
     status = STATUS_LABELS[c.get(STATUS_COLUMN, '')]
@@ -197,7 +191,28 @@ def parse_row(c, metadata):
     return row
 
 
-def load_rows(csv_path,metadata,changed_titles=None):
+def revised_rows(reader, changes):
+    """Apply keyed corrections without replacing unrelated cells or duplicating restored results."""
+    edits = dict(changes.get('update', {}))
+    added = changes.get('append', [])
+    append = {row['成绩ID']: row for row in added}
+    if len(append) != len(added) or edits.keys() & append.keys():
+        raise ValueError('Duplicate result ID in CSV updates')
+    for row in reader:
+        rid = row['成绩ID']
+        for field, (before, after) in edits.pop(rid, {}).items():
+            if row[field] not in (before, after):
+                raise ValueError(f'Conflicting CSV update for {rid} {field}')
+            row[field] = after
+        if rid in append and row != append.pop(rid):
+            raise ValueError(f'Existing result conflicts with appended row {rid}')
+        yield row
+    if edits:
+        raise ValueError('Missing result for CSV update: ' + ', '.join(edits))
+    yield from append.values()
+
+
+def load_rows(csv_path,metadata,changed_titles=None,changes=None):
     rows=[]
     ids=set()
     with csv_path.open(encoding='utf-8-sig',newline='') as f:
@@ -205,7 +220,7 @@ def load_rows(csv_path,metadata,changed_titles=None):
         head=data.fieldnames or []
         if len(set(head))!=len(head) or set(COLUMNS)-set(head):
             raise ValueError('Missing or duplicate downloadable-CSV headers')
-        for c in data:
+        for c in revised_rows(data, changes or {}):
             try:
                 if None in c or None in c.values():
                     raise ValueError('Wrong column count')
@@ -224,6 +239,56 @@ def load_rows(csv_path,metadata,changed_titles=None):
     if not rows:
         raise ValueError('No competition results')
     return rows
+
+
+def rank_table(rows, output):
+    """Write a Zarr v3 array. Each column's nonzero codes index its lossless value dictionary."""
+    import struct
+
+    columns = {}
+    constants = {}
+    block = bytearray()
+    width = 2 if len(rows) <= 65535 else 4
+    code = 'H' if width == 2 else 'I'
+    fields = sorted({k for row in rows for k in row})
+    for field in fields:
+        # Zero preserves an absent optional field, independently of an explicit JSON null.
+        values, indexes, codes = [], {}, []
+        for row in rows:
+            if field not in row:
+                codes.append(0)
+                continue
+            value = row[field]
+            key = encoded(value)
+            if key not in indexes:
+                values.append(value)
+                indexes[key] = len(values)
+            codes.append(indexes[key])
+        if len(values) == 1 and 0 not in codes:
+            constants[field] = values[0]
+        else:
+            columns[field] = values
+            block.extend(struct.pack(f'<{len(codes)}{code}', *codes))
+    # Singleton seasons also have a valid, nonempty Zarr chunk.
+    shape = [max(1, len(columns)), len(rows)]
+    if not columns:
+        block.extend(bytes(width * len(rows)))
+    header = encoded({
+        'zarr_format': 3, 'node_type': 'array', 'shape': shape,
+        'data_type': 'uint16' if width == 2 else 'uint32',
+        'chunk_grid': {'name': 'regular', 'configuration': {'chunk_shape': shape}},
+        'chunk_key_encoding': {'name': 'default', 'configuration': {'separator': '/'}},
+        'fill_value': 0, 'codecs': [{'name': 'bytes', 'configuration': {'endian': 'little'}}],
+        'dimension_names': ['field', 'result'],
+        'attributes': {'constants': constants, 'fields': list(columns), 'dictionaries': list(columns.values())}
+    })
+    digest = hashlib.sha256(header + block).hexdigest()[:24]
+    directory = output/'assets/data'/('rank-' + digest + '.zarr')
+    chunk = directory/'c/0/0'
+    chunk.parent.mkdir(parents=True, exist_ok=True)
+    (directory/'zarr.json').write_bytes(header)
+    chunk.write_bytes(block)
+    return directory.relative_to(output).as_posix()
 
 
 def gl_preview(rows):
@@ -251,7 +316,9 @@ def gl_preview(rows):
 
 def pack(csv_path, metadata, output):
     changed_titles={}
-    rows=load_rows(csv_path,metadata,changed_titles)
+    updates_path = csv_path.with_suffix('.updates.json')
+    changes = json.loads(updates_path.read_text(encoding='utf-8')) if updates_path.exists() else {}
+    rows=load_rows(csv_path,metadata,changed_titles,changes)
     countries=metadata.get('athleteCountries',{})
     additional_profiles=set(metadata.get('additionalAthleteProfiles', ()))
     people=defaultdict(list)
@@ -378,11 +445,21 @@ def pack(csv_path, metadata, output):
         annual_ranks[d]={str(year):asset('ranks',group) if group else None for year,group in years.items()}
     assets={'scopes':asset('scopes',list(scope_rows.values())), 'preview':previews, 'ranks':annual_ranks,
             'meets':meet_files, 'search':asset('search',search), 'profiles':[asset('profiles',bucket) for bucket in buckets]}
+    assets['analytics'] = build_analytics(ranking, asset)
+    assets['rankTables'] = {}
+    for discipline, records in ranking.items():
+        partitions = defaultdict(lambda: defaultdict(list))
+        for row in records:
+            partitions[str(row['year'])][row['meet_type']].append(row)
+        assets['rankTables'][discipline] = {
+            year: {kind: rank_table(group, output) for kind, group in types.items()}
+            for year, types in partitions.items()}
     catalog={'meets':meets,'assets':assets,'rankingCounts':counts_by_year,'previewYears':preview_years,'rankingViews':ranking_views,
+             'athleteNotes':metadata.get('athleteNotes', {}),
              'previousAthleteIds':metadata.get('previousAthleteIds',{}),
              'recordFederations':{mid:next(iter(events.values()))[0]['record_federation']
                                   for mid,events in competitions.items()}}
-    if changed_titles:
+    if changes or changed_titles:
         destination=output/'IPFcn-results.csv'
         with TemporaryDirectory(dir=output) as staging:
             updated=Path(staging)/destination.name
@@ -391,7 +468,7 @@ def pack(csv_path, metadata, output):
                 reader=csv.DictReader(source)
                 writer=csv.DictWriter(handle, reader.fieldnames)
                 writer.writeheader()
-                for values in reader:
+                for values in revised_rows(reader, changes):
                     titles=changed_titles.get(values['成绩ID'].strip())
                     if titles:
                         values['赛事名称'],values['赛事英文名']=titles

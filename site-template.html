@@ -10,14 +10,12 @@
 
 function createResultStore(catalog) {
   const assets = catalog.assets;
-  const files = new Map();
-  const rowsById = new Map();
-  const rowsByOrder = [];
-  const rowsByEvent = new Map();
-  const rowsBySeason = new Map();
-  const rowFiles = new Map();
   const meets = new Map(catalog.meets.map(meet => [meet.meet_id, meet]));
+  const pending = new Map();
+  const scripts = new Map();
   const failed = new Set();
+  let activeKey, activeRead, scopesRead;
+
   async function recoverRevision(path) {
     const key = 'ipfcn.recovered-url';
     try {
@@ -33,177 +31,124 @@ function createResultStore(catalog) {
     } catch {}
   }
 
-  function once(map, key, read) {
-    if (!map.has(key)) {
-      map.set(key, read().catch(error => {
-        map.delete(key);
-        throw error;
-      }));
-    }
-    return map.get(key);
-  }
-  function json(path) {
-    return once(files, path, async () => {
-      try {
-        const response = await fetch(path, {cache: failed.has(path) ? 'reload' : 'force-cache'});
+  function read(path, binary = false) {
+    if (!pending.has(path)) {
+      const promise = fetch(path, {cache: failed.has(path) ? 'reload' : 'force-cache'}).then(async response => {
         if (!response.ok) {
           if (response.status === 404) await recoverRevision(path);
           throw new Error('HTTP ' + response.status + ' ' + path);
         }
-        const value = await response.json();
+        const value = binary ? await response.arrayBuffer() : await response.json();
         failed.delete(path);
         return value;
-      } catch (error) {
+      }).catch(error => {
         failed.add(path);
         throw error;
-      }
-    });
-  }
-  function remember(row) {
-    const existing = rowsById.get(row.record_id);
-    if (existing) return existing;
-    rowsById.set(row.record_id, row);
-    rowsByOrder[row.source_order] = row;
-    const event = row.meet_id + '/' + (row.discipline || 'SBD');
-    if (!rowsByEvent.has(event)) rowsByEvent.set(event, []);
-    rowsByEvent.get(event).push(row);
-    if (row.rankings_eligible) {
-      const season = (row.discipline || 'SBD') + '/' + row.year;
-      if (!rowsBySeason.has(season)) rowsBySeason.set(season, []);
-      rowsBySeason.get(season).push(row);
+      }).finally(() => pending.delete(path));
+      pending.set(path, promise);
     }
-    return row;
+    return pending.get(path);
   }
-  function rows(path) {
-    return once(rowFiles, path, async () => (await json(path)).map(remember));
+
+  // Keep the visible route and its in-flight requests. Immutable shards remain in the HTTP cache.
+  function active(key, load) {
+    if (key !== activeKey) {
+      activeKey = key;
+      const promise = load().catch(error => {
+        if (activeRead === promise) { activeKey = activeRead = undefined; }
+        throw error;
+      });
+      activeRead = promise;
+    }
+    return activeRead;
   }
+
   function disciplineFor(id, requested) {
     const available = meets.get(id)?.disciplines || [];
     return available.includes(requested) ? requested : available[0];
   }
-  async function meetRows(id, discipline) {
-    if (!discipline) return undefined;
-    const event = id + '/' + discipline;
-    if (rowsByEvent.get(event)?.length !== meets.get(id).counts[discipline]) {
-      await rows(assets.meets[id][discipline]);
-    }
-    return rowsByEvent.get(event).sort((a, b) => a.source_order - b.source_order);
+
+  function meetRows(id, discipline) {
+    return active('meet/' + id + '/' + discipline, async () =>
+      discipline ? read(assets.meets[id][discipline]) : undefined);
   }
-  const scripts = new Map();
+
+  function archive(id) {
+    return active('athlete/' + id, async () => {
+      let bucket = 0;
+      for (const char of id) bucket = (31 * bucket + char.codePointAt(0)) % 32;
+      const index = await read(assets.profiles[bucket]);
+      const entry = Object.hasOwn(index.profiles, id) && index.profiles[id];
+      return entry ? {rows: await read(entry.file)} : {foreign: index.foreign.includes(id)};
+    });
+  }
+
+  function preview(discipline, type) {
+    const path = catalog.rankingViews[discipline][type || 'all'].file;
+    return active(path, () => read(path));
+  }
+
+  async function rankTable(path) {
+    const [header, buffer] = await Promise.all([read(path + '/zarr.json'), read(path + '/c/0/0', true)]);
+    const [columnCount, count] = header.shape;
+    const {constants, fields, dictionaries} = header.attributes;
+    const stride = header.data_type === 'uint16' ? 2 : 4;
+    if (buffer.byteLength !== count * columnCount * stride) throw new Error('Incomplete ranking chunk');
+    const data = new DataView(buffer);
+    const prototype = {...constants};
+    fields.forEach((field, column) => {
+      const values = dictionaries[column];
+      const offset = column * count;
+      Object.defineProperty(prototype, field, {enumerable: true, get() {
+        const cell = (offset + this.rowIndex) * stride;
+        const index = stride === 2 ? data.getUint16(cell, true) : data.getUint32(cell, true);
+        return index ? values[index - 1] : undefined;
+      }});
+    });
+    // Wrappers share the column dictionaries, typed buffer, and property accessors.
+    return Array.from({length: count}, (_, rowIndex) => {
+      const row = Object.create(prototype);
+      row.rowIndex = rowIndex;
+      return row;
+    });
+  }
+
+  function ranks(discipline, years = [], type) {
+    const partitions = assets.rankTables[discipline];
+    const selected = [...new Set(years.length ? years.map(String) : Object.keys(partitions))].sort();
+    const key = ['rank', discipline, type || 'all', ...selected].join('/');
+    return active(key, async () => {
+      const paths = selected.flatMap(year => Object.entries(partitions[year] || {})
+        .filter(([kind]) => !type || type === kind).map(([, path]) => path));
+      const groups = await Promise.all(paths.map(rankTable));
+      return groups.flat().sort((a, b) => a.source_order - b.source_order);
+    });
+  }
+
   function loadScript(name) {
-    return once(scripts, name, () => new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = document.getElementById('site-app').dataset[name];
-      script.onload = resolve;
-      script.onerror = () => {
-        script.remove();
-        reject(new Error('Could not load ' + name));
-      };
-      document.head.append(script);
-    }));
-  }
-  async function archive(id) {
-    let bucket = 0;
-    for (const char of id) bucket = (31 * bucket + char.codePointAt(0)) % 32;
-    const index = await json(assets.profiles[bucket]);
-    const entry = Object.hasOwn(index.profiles, id) && index.profiles[id];
-    if (!entry) return {foreign: index.foreign.includes(id)};
-    const cached = entry.ids.map(key => rowsById.get(key));
-    return {rows: cached.every(Boolean) ? cached : await rows(entry.file)};
-  }
-  const previews = new Map();
-  function preview(discipline, meetType) {
-    const kind = meetType || 'all';
-    return once(previews, discipline + '/' + kind, async () => {
-      const index = catalog.rankingViews[discipline][kind];
-      const cached = index.orders.map(order => rowsByOrder[order]);
-      if (cached.every(Boolean)) return {rows: cached, counts: index.counts};
-      if (meetType && index.extra && catalog.rankingViews[discipline].all.orders.every(order => rowsByOrder[order])) {
-        await rows(index.extra);
-        return {rows: index.orders.map(order => rowsByOrder[order]), counts: index.counts};
-      }
-      const part = await json(index.file);
-      return {rows: part.rows.map(remember), counts: part.counts};
-    });
-  }
-  const allSeasonReads = new Map();
-  const typedSeasonReads = new Map();
-  function seasonRows(discipline, year, meetType) {
-    const season = rowsBySeason.get(discipline + '/' + year) || [];
-    return meetType ? season.filter(row => row.meet_type === meetType) : season;
-  }
-  function needMembers(part) {
-    return part && part.orders.some(order => !rowsByOrder[order]);
-  }
-  function readTypeYear(discipline, year, type) {
-    const season = catalog.rankingViews[discipline][type].years[year];
-    const known = seasonRows(discipline, year, type).length;
-    if (!season || known === season.count) return;
-    return once(typedSeasonReads, [discipline, year, type].join('/'), async () => {
-      const missing = season.count - known;
-      let missingPreview = 0;
-      const reads = [];
-      for (const part of [season.global, season.extra]) {
-        if (!needMembers(part)) continue;
-        missingPreview += part.orders.filter(order => !rowsByOrder[order]).length;
-        const shared = part === season.global && previews.get(discipline + '/all');
-        reads.push(shared || rows(part.file));
-      }
-      if (missing > missingPreview) reads.push(rows(season.remainder));
-      await Promise.all(reads);
-    });
-  }
-  function readSeason(discipline, year, meetType) {
-    const key = discipline + '/' + year;
-    const views = catalog.rankingViews[discipline];
-    if (meetType) {
-      return allSeasonReads.get(key) || readTypeYear(discipline, year, meetType);
+    if (!scripts.has(name)) {
+      scripts.set(name, new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = document.getElementById('site-app').dataset[name];
+        script.onload = resolve;
+        script.onerror = () => {
+          scripts.delete(name);
+          script.remove();
+          reject(new Error('Could not load ' + name));
+        };
+        document.head.append(script);
+      }));
     }
-    if (seasonRows(discipline, year).length === catalog.rankingCounts[discipline][year]) return;
-    return once(allSeasonReads, key, async () => {
-      const types = ['domestic', 'international'].filter(type => views[type].years[year]);
-      const missing = types.filter(type => seasonRows(discipline, year, type).length < views[type].years[year].count);
-      const typed = missing.some(type => typedSeasonReads.has(key + '/' + type) ||
-        views[type].years[year].extra?.orders.some(order => rowsByOrder[order]));
-      if (missing.length < types.length || typed) {
-        await Promise.all(missing.map(type => readTypeYear(discipline, year, type)));
-        return;
-      }
-      const file = assets.ranks[discipline][year];
-      const reads = file ? [rows(file)] : [];
-      for (const type of missing) {
-        const part = views[type].years[year].global;
-        if (needMembers(part)) reads.push(previews.get(discipline + '/all') || rows(part.file));
-      }
-      await Promise.all(reads);
-    });
-  }
-  const rankingViews = new Map();
-  function ranks(discipline, years = [], meetType) {
-    const seasons = meetType ? catalog.rankingViews[discipline][meetType].years : assets.ranks[discipline];
-    const selected = [...new Set(years.length ? years : Object.keys(seasons).map(Number))]
-      .filter(year => Object.hasOwn(seasons, year)).sort((a, b) => a - b);
-    const key = [discipline, meetType || 'all', selected.join(',')].join('/');
-    return once(rankingViews, key, async () => {
-      const allYears = !meetType && selected.length === Object.keys(seasons).length;
-      const types = ['domestic', 'international'];
-      const cold = allYears && !types.some(type => previews.has(discipline + '/' + type)) && selected.every(year => {
-        const season = discipline + '/' + year;
-        return !rowsBySeason.has(season) && !allSeasonReads.has(season) &&
-          !types.some(type => typedSeasonReads.has(season + '/' + type));
-      });
-      const shared = cold ? preview(discipline) : undefined;
-      await Promise.all([shared, ...selected.map(year => readSeason(discipline, year, meetType))]);
-      return selected.flatMap(year => seasonRows(discipline, year, meetType)).sort((a, b) => a.source_order - b.source_order);
-    });
+    return scripts.get(name);
   }
   return {meets, archive, meetRows, disciplineFor, preview, ranks,
-    charts: () => window.IPFcnRecords ? undefined : loadScript('charts'),
-    chartProbe: () => loadScript('probe'),
-    scopes: () => json(assets.scopes), search: () => json(assets.search)};
+    analytics: d => active(assets.analytics[d], () => read(assets.analytics[d])),
+    analyticsYear: read, charts: () => loadScript('charts'), chartProbe: () => loadScript('probe'),
+    scopes: () => scopesRead ||= read(assets.scopes).catch(error => { scopesRead = undefined; throw error; }),
+    search: () => read(assets.search)};
 }
 </script>
-  <script id="site-app" defer src="static/app-fe3e0fb69d6345789308359b.js" data-charts="static/charts-a76481cefd724661caf0c99e.js" data-probe="static/chart-probe-561412ab085d78ff1c017c31.js"></script>
+  <script id="site-app" defer src="static/app-6b83c4153f37b29bd0070d22.js" data-charts="static/charts-51359882eb006c333de099f1.js" data-probe="static/chart-probe-561412ab085d78ff1c017c31.js"></script>
   <script>
     window.IPFcnCatalog = JSON.parse(document.getElementById('catalog').textContent);
     window.IPFcnData = createResultStore(window.IPFcnCatalog);
@@ -217,7 +162,7 @@ function createResultStore(catalog) {
         const event = store.disciplineFor(id, discipline);
         if (event) { start(store.meetRows(id, event)); start(store.charts()); }
       } else if (route.has('records')) {
-        start(store.ranks(discipline, [])); start(store.charts());
+        start(store.analytics(discipline)); start(store.charts());
       } else if (route.has('athlete')) {
         const key = route.get('athlete');
         start(store.archive(window.IPFcnCatalog.previousAthleteIds[key] || key));
@@ -228,11 +173,12 @@ function createResultStore(catalog) {
         const sort = route.get('sort') || saved?.filters?.sort || 'gl';
         const years = saved?.filters?.years || [];
         const full = sort !== 'gl' || years.length || saved?.filters?.divisions?.length || saved?.expanded?.length;
-        start(full ? store.ranks(project, years) : store.preview(project));
+        const type = saved?.filters?.meetTypes?.length === 1 ? saved.filters.meetTypes[0] : undefined;
+        start(full ? store.ranks(project, years, type) : store.preview(project, type));
       }
     })();
   </script>
-  <link rel="stylesheet" href="static/site-f18d47c4122185edc450f460.css">
+  <link rel="stylesheet" href="static/site-dcd429b95b11303098422a2d.css">
   <script>
     (() => {
       const key = 'ipfcn_result.theme';
@@ -401,8 +347,9 @@ function createResultStore(catalog) {
     </section>
     <noscript><span lang="zh-CN">请开启 JavaScript 以查看和筛选成绩。</span> <span lang="en">Enable JavaScript to view and filter results.</span></noscript>
     <footer>
-      <p class="zh-footer" lang="zh-CN">国内成绩收录自 2020 年 IPFcn 成立以来 B 级（区域赛）及以上赛事的经典力量举三项和卧推举单项。国际成绩收录自 2017 年起中国代表队参加的亚洲力量举联合会（APF）和国际力量举联合会（IPF）赛事。国际赛单场成绩表涵盖各代表队，代表中国参赛的成绩计入总榜。个别涉及反兴奋剂争议的运动员未纳入统计。</p>
-      <p lang="en">Domestic results cover Classic Powerlifting and Classic Bench Press at IPFcn Grade B (regional) meets and above since IPFcn was established in 2020. International results cover Asian Powerlifting Federation (APF) and International Powerlifting Federation (IPF) meets attended by Team China from 2017 onward. International meet results include all teams. Performances for Team China count toward the overall rankings. A small number of athletes involved in anti-doping disputes are excluded.</p>
+      <p class="zh-footer" lang="zh-CN">国内成绩收录自 2020 年 IPFcn 成立以来 B 级（区域赛）及以上赛事的经典力量举三项和卧推举单项。国际成绩收录自 2017 年起中国代表队参加的亚洲力量举联合会（APF）和国际力量举联合会（IPF）赛事。国际赛单场成绩表涵盖各代表队，代表中国参赛的成绩计入总榜。比赛成绩以收录的赛事成绩表为准。级别名次采用原表名次，或按同组成绩计算。带叹号的姓名附有资料说明。</p>
+      <p lang="en">Domestic results cover Classic Powerlifting and Classic Bench Press at IPFcn Grade B (regional) meets and above since IPFcn was established in 2020. International results cover Asian Powerlifting Federation (APF) and International Powerlifting Federation (IPF) meets attended by Team China from 2017 onward. International meet results include all teams. Performances for Team China count toward the overall rankings. Results follow the meet scoresheets. Class placings come from the scoresheets or are calculated from results in the same class. An exclamation mark beside a name indicates a source note.</p>
+      <ul id="athlete-source-notes" class="athlete-source-notes" hidden></ul>
       <a class="data-download" href="./IPFcn-results.csv" download="IPFcn-results.csv"><span data-i18n-en="Download all results (CSV)">下载全部成绩</span> <small lang="en">DOWNLOAD CSV</small></a>
     </footer>
   </main>
