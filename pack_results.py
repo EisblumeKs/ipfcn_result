@@ -191,7 +191,28 @@ def parse_row(c, metadata):
     return row
 
 
-def load_rows(csv_path,metadata,changed_titles=None):
+def revised_rows(reader, changes):
+    """Apply keyed corrections without replacing unrelated cells or duplicating restored results."""
+    edits = dict(changes.get('update', {}))
+    added = changes.get('append', [])
+    append = {row['成绩ID']: row for row in added}
+    if len(append) != len(added) or edits.keys() & append.keys():
+        raise ValueError('Duplicate result ID in CSV updates')
+    for row in reader:
+        rid = row['成绩ID']
+        for field, (before, after) in edits.pop(rid, {}).items():
+            if row[field] not in (before, after):
+                raise ValueError(f'Conflicting CSV update for {rid} {field}')
+            row[field] = after
+        if rid in append and row != append.pop(rid):
+            raise ValueError(f'Existing result conflicts with appended row {rid}')
+        yield row
+    if edits:
+        raise ValueError('Missing result for CSV update: ' + ', '.join(edits))
+    yield from append.values()
+
+
+def load_rows(csv_path,metadata,changed_titles=None,changes=None):
     rows=[]
     ids=set()
     with csv_path.open(encoding='utf-8-sig',newline='') as f:
@@ -199,7 +220,7 @@ def load_rows(csv_path,metadata,changed_titles=None):
         head=data.fieldnames or []
         if len(set(head))!=len(head) or set(COLUMNS)-set(head):
             raise ValueError('Missing or duplicate downloadable-CSV headers')
-        for c in data:
+        for c in revised_rows(data, changes or {}):
             try:
                 if None in c or None in c.values():
                     raise ValueError('Wrong column count')
@@ -295,7 +316,9 @@ def gl_preview(rows):
 
 def pack(csv_path, metadata, output):
     changed_titles={}
-    rows=load_rows(csv_path,metadata,changed_titles)
+    updates_path = csv_path.with_suffix('.updates.json')
+    changes = json.loads(updates_path.read_text(encoding='utf-8')) if updates_path.exists() else {}
+    rows=load_rows(csv_path,metadata,changed_titles,changes)
     countries=metadata.get('athleteCountries',{})
     additional_profiles=set(metadata.get('additionalAthleteProfiles', ()))
     people=defaultdict(list)
@@ -436,7 +459,7 @@ def pack(csv_path, metadata, output):
              'previousAthleteIds':metadata.get('previousAthleteIds',{}),
              'recordFederations':{mid:next(iter(events.values()))[0]['record_federation']
                                   for mid,events in competitions.items()}}
-    if changed_titles:
+    if changes or changed_titles:
         destination=output/'IPFcn-results.csv'
         with TemporaryDirectory(dir=output) as staging:
             updated=Path(staging)/destination.name
@@ -445,7 +468,7 @@ def pack(csv_path, metadata, output):
                 reader=csv.DictReader(source)
                 writer=csv.DictWriter(handle, reader.fieldnames)
                 writer.writeheader()
-                for values in reader:
+                for values in revised_rows(reader, changes):
                     titles=changed_titles.get(values['成绩ID'].strip())
                     if titles:
                         values['赛事名称'],values['赛事英文名']=titles
