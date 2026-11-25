@@ -1,7 +1,9 @@
 """Pack the records page from the same eligible results as the annual ranking views."""
 from collections import defaultdict
+from fractions import Fraction
 import json
 from pathlib import Path
+from statistics import mean, median
 
 AGES = ('公开组', '少年组', '青年组', '大师一组', '大师二组', '大师三组', '大师四组')
 YOUTH = {'少年组', '青年组'}
@@ -75,6 +77,90 @@ def sample(rows, metrics):
             'gl': {gender: sorted(by_athlete.values()) for gender, by_athlete in gl.items()}}
 
 
+def rank_by_total(rows):
+    # As on the rankings page, a missing weigh-in precludes breaking that total's tie.
+    missing_weigh_in = {row['total'] for row in rows if row['bodyweight'] is None}
+
+    def score(row):
+        return -row['total'], 0 if row['total'] in missing_weigh_in else row['bodyweight']
+
+    previous = None
+    for index, row in enumerate(sorted(rows, key=score), 1):
+        current = score(row)
+        if current != previous:
+            place = index
+            previous = current
+        yield row, place
+
+
+def open_place(row):
+    for entry in row.get('class_places', ()):
+        if entry['division'] == '公开组':
+            return entry['place']
+    if row['division'] == '公开组':
+        return row['class_place']
+
+
+def placing_summary(performances, limit):
+    totals = [Fraction(str(total)) for place, total in performances if place <= limit]
+    if not totals:
+        return [0, None, None]
+
+    def nearest_increment(value):
+        # Round half upwards to the next 2.5 kg using exact decimal input.
+        step = Fraction(5, 2)
+        return float(((value + step / 2) // step) * step)
+
+    return [len(totals), nearest_increment(mean(totals)), nearest_increment(median(totals))]
+
+
+def placing_stats(rows):
+    groups = defaultdict(list)
+    classes = {'M': set(), 'F': set()}
+    years = set()
+    for row in rows:
+        if row['discipline'] != 'SBD' or row['meet_type'] != 'domestic':
+            continue
+        years.add(str(row['year']))
+        if row.get('status') or not row.get('class_place') or row['place_basis'] == 'guest':
+            continue
+        gender = row['gender']
+        original = row.get('placement_weight_class') or row['weight_class']
+        # Women's historical 72 kg stays separate for placing statistics.
+        weight = {('M', '53'): '59', ('F', '43'): '47'}.get((gender, original), original)
+        classes[gender].add(weight)
+        groups[row['meet_id'], gender, weight].append(row)
+
+    best = defaultdict(dict)
+    for (_, gender, weight), group in groups.items():
+        open_results = [(row, place) for row in group if (place := open_place(row))]
+        original_classes = {row.get('placement_weight_class') or row['weight_class']
+                            for row, _ in open_results}
+        # Preserve published Open placings unless separate podiums must be merged.
+        if len(original_classes) > 1:
+            open_results = rank_by_total([row for row, _ in open_results])
+        for scope, results in (('open', open_results), ('combined', rank_by_total(group))):
+            for row, place in results:
+                if place > 3:
+                    continue
+                athlete = row['athlete_id']
+                for period_key in ('all', str(row['year'])):
+                    athletes = best[period_key, scope, gender, weight]
+                    previous = athletes.get(athlete)
+                    if (previous is None or place < previous[0]
+                            or (place == previous[0] and row['total'] > previous[1])):
+                        athletes[athlete] = (place, row['total'])
+
+    years = sorted(years, reverse=True)
+    periods = {key: {scope: {'M': {}, 'F': {}} for scope in ('open', 'combined')}
+               for key in ('all', *years)}
+    for (period_key, scope, gender, weight), athletes in best.items():
+        periods[period_key][scope][gender][weight] = [
+            placing_summary(athletes.values(), limit) for limit in (3, 2, 1)]
+    return {'years': years, 'classes': {g: sorted(values, key=class_sort) for g, values in classes.items()},
+            'periods': periods}
+
+
 def national_records(rows, metrics):
     possible = defaultdict(list)
     for row in rows:
@@ -126,7 +212,7 @@ def world_records(rows):
             'sources': list(sources), 'entries': entries}
 
 
-def build_analytics(ranking, asset):
+def build_analytics(ranking, asset, archive_rows):
     """Return discipline -> immutable index URL, using the packer's asset(kind, object)."""
     world = json.loads(Path(__file__).with_name('world_records.json').read_text(encoding='utf-8'))
     index = {}
@@ -143,9 +229,12 @@ def build_analytics(ranking, asset):
                 group: sorted({weight for r in rows if r['gender'] == gender
                                if (weight := class_for(r, youth))}, key=class_sort)
                 for group, youth in (('open', False), ('youth', True))}
-        index[discipline] = asset('analytics', {
+        analytics = {
             'classes': classes, 'all': sample(rows, metrics),
             'years': {str(year): asset('samples', sample(group, metrics)) for year, group in by_year.items()},
             'national': national_records(rows, metrics),
-            'world': world_records(r for r in world if r['discipline'] == discipline)})
+            'world': world_records(r for r in world if r['discipline'] == discipline)}
+        if discipline == 'SBD':
+            analytics['placingStats'] = placing_stats(archive_rows)
+        index[discipline] = asset('analytics', analytics)
     return index
