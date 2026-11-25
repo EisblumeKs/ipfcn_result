@@ -93,12 +93,24 @@ def rank_by_total(rows):
         yield row, place
 
 
-def open_place(row):
+# These keys identify published age-division placings in placingStats.periods.
+# The additional "combined" scope ranks all eligible finishers across divisions.
+PLACING_SCOPES = {
+    '公开组': 'open', '少年组': 'subjunior', '青年组': 'junior',
+    '大师一组': 'masters1', '大师二组': 'masters2', '大师三组': 'masters3', '大师四组': 'masters4',
+}
+
+
+def age_group_places(row):
+    places = {}
+    primary = PLACING_SCOPES.get(row['division'])
+    if primary and row.get('class_place'):
+        places[primary] = row['class_place']
     for entry in row.get('class_places', ()):
-        if entry['division'] == '公开组':
-            return entry['place']
-    if row['division'] == '公开组':
-        return row['class_place']
+        scope = PLACING_SCOPES.get(entry['division'])
+        if scope and entry.get('place'):
+            places[scope] = entry['place']
+    return places
 
 
 def placing_summary(performances, limit):
@@ -122,37 +134,40 @@ def placing_stats(rows):
         if row['discipline'] != 'SBD' or row['meet_type'] != 'domestic':
             continue
         years.add(str(row['year']))
-        if row.get('status') or not row.get('class_place') or row['place_basis'] == 'guest':
+        if row.get('status') or row['place_basis'] == 'guest':
+            continue
+        places = age_group_places(row)
+        if not row.get('class_place') and not places:
             continue
         gender = row['gender']
         original = row.get('placement_weight_class') or row['weight_class']
         # Women's historical 72 kg stays separate for placing statistics.
         weight = {('M', '53'): '59', ('F', '43'): '47'}.get((gender, original), original)
         classes[gender].add(weight)
-        groups[row['meet_id'], gender, weight].append(row)
+        groups[row['meet_id'], gender, weight, 'combined'].append((row, None))
+        for scope, place in places.items():
+            groups[row['meet_id'], gender, weight, scope].append((row, place))
 
     best = defaultdict(dict)
-    for (_, gender, weight), group in groups.items():
-        open_results = [(row, place) for row in group if (place := open_place(row))]
+    for (_, gender, weight, scope), results in groups.items():
         original_classes = {row.get('placement_weight_class') or row['weight_class']
-                            for row, _ in open_results}
-        # Preserve published Open placings unless separate podiums must be merged.
-        if len(original_classes) > 1:
-            open_results = rank_by_total([row for row, _ in open_results])
-        for scope, results in (('open', open_results), ('combined', rank_by_total(group))):
-            for row, place in results:
-                if place > 3:
-                    continue
-                athlete = row['athlete_id']
-                for period_key in ('all', str(row['year'])):
-                    athletes = best[period_key, scope, gender, weight]
-                    previous = athletes.get(athlete)
-                    if (previous is None or place < previous[0]
-                            or (place == previous[0] and row['total'] > previous[1])):
-                        athletes[athlete] = (place, row['total'])
+                            for row, _ in results}
+        # Preserve each division's published placings unless separate podiums are merged.
+        if scope == 'combined' or len(original_classes) > 1:
+            results = rank_by_total([row for row, _ in results])
+        for row, place in results:
+            if place > 3:
+                continue
+            athlete = row['athlete_id']
+            for period_key in ('all', str(row['year'])):
+                athletes = best[period_key, scope, gender, weight]
+                previous = athletes.get(athlete)
+                if (previous is None or place < previous[0]
+                        or (place == previous[0] and row['total'] > previous[1])):
+                    athletes[athlete] = (place, row['total'])
 
     years = sorted(years, reverse=True)
-    periods = {key: {scope: {'M': {}, 'F': {}} for scope in ('open', 'combined')}
+    periods = {key: {scope: {'M': {}, 'F': {}} for scope in (*PLACING_SCOPES.values(), 'combined')}
                for key in ('all', *years)}
     for (period_key, scope, gender, weight), athletes in best.items():
         periods[period_key][scope][gender][weight] = [
