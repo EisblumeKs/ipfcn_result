@@ -445,7 +445,7 @@ def pack(csv_path, metadata, output):
         annual_ranks[d]={str(year):asset('ranks',group) if group else None for year,group in years.items()}
     assets={'scopes':asset('scopes',list(scope_rows.values())), 'preview':previews, 'ranks':annual_ranks,
             'meets':meet_files, 'search':asset('search',search), 'profiles':[asset('profiles',bucket) for bucket in buckets]}
-    assets['analytics'] = build_analytics(ranking, asset)
+    assets['analytics'] = build_analytics(ranking, asset, rows)
     assets['rankTables'] = {}
     for discipline, records in ranking.items():
         partitions = defaultdict(lambda: defaultdict(list))
