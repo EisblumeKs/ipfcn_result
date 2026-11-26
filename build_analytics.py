@@ -121,18 +121,15 @@ def nearest_increment(value):
 
 def placing_summary(performances, limit):
     scores = []
-    best = {}
+    athletes = set()
     for athlete, place, score in performances:
-        if place > limit:
-            continue
-        scores.append(score)
-        previous = best.get(athlete)
-        if previous is None or place < previous[0] or (place == previous[0] and score > previous[1]):
-            best[athlete] = (place, score)
+        if place <= limit:
+            scores.append(score)
+            athletes.add(athlete)
     if not scores:
-        return [0, None, None]
-    return [len(best), nearest_increment(mean(scores)),
-            nearest_increment(median(score for _, score in best.values()))]
+        return [0, None, None, []]
+    return [len(athletes), nearest_increment(mean(scores)), nearest_increment(median(scores)),
+            [float(score) for score in sorted(scores)]]
 
 
 def placing_stats(rows, discipline):
