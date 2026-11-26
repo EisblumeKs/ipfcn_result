@@ -77,12 +77,12 @@ def sample(rows, metrics):
             'gl': {gender: sorted(by_athlete.values()) for gender, by_athlete in gl.items()}}
 
 
-def rank_by_total(rows):
-    # As on the rankings page, a missing weigh-in precludes breaking that total's tie.
-    missing_weigh_in = {row['total'] for row in rows if row['bodyweight'] is None}
+def rank_by_score(rows, metric):
+    # As on the rankings page, a missing weigh-in precludes breaking that score's tie.
+    missing_weigh_in = {row[metric] for row in rows if row['bodyweight'] is None}
 
     def score(row):
-        return -row['total'], 0 if row['total'] in missing_weigh_in else row['bodyweight']
+        return -row[metric], 0 if row[metric] in missing_weigh_in else row['bodyweight']
 
     previous = None
     for index, row in enumerate(sorted(rows, key=score), 1):
@@ -113,25 +113,35 @@ def age_group_places(row):
     return places
 
 
+def nearest_increment(value):
+    # Round half upwards to the next 2.5 kg using exact decimal input.
+    step = Fraction(5, 2)
+    return float(((value + step / 2) // step) * step)
+
+
 def placing_summary(performances, limit):
-    totals = [Fraction(str(total)) for place, total in performances if place <= limit]
-    if not totals:
+    scores = []
+    best = {}
+    for athlete, place, score in performances:
+        if place > limit:
+            continue
+        scores.append(score)
+        previous = best.get(athlete)
+        if previous is None or place < previous[0] or (place == previous[0] and score > previous[1]):
+            best[athlete] = (place, score)
+    if not scores:
         return [0, None, None]
-
-    def nearest_increment(value):
-        # Round half upwards to the next 2.5 kg using exact decimal input.
-        step = Fraction(5, 2)
-        return float(((value + step / 2) // step) * step)
-
-    return [len(totals), nearest_increment(mean(totals)), nearest_increment(median(totals))]
+    return [len(best), nearest_increment(mean(scores)),
+            nearest_increment(median(score for _, score in best.values()))]
 
 
-def placing_stats(rows):
+def placing_stats(rows, discipline):
+    metric = 'bench' if discipline == 'B' else 'total'
     groups = defaultdict(list)
     classes = {'M': set(), 'F': set()}
     years = set()
     for row in rows:
-        if row['discipline'] != 'SBD' or row['meet_type'] != 'domestic':
+        if row['discipline'] != discipline or row['meet_type'] != 'domestic':
             continue
         years.add(str(row['year']))
         if row.get('status') or row['place_basis'] == 'guest':
@@ -148,30 +158,26 @@ def placing_stats(rows):
         for scope, place in places.items():
             groups[row['meet_id'], gender, weight, scope].append((row, place))
 
-    best = defaultdict(dict)
+    performances = defaultdict(list)
     for (_, gender, weight, scope), results in groups.items():
         original_classes = {row.get('placement_weight_class') or row['weight_class']
                             for row, _ in results}
         # Preserve each division's published placings unless separate podiums are merged.
         if scope == 'combined' or len(original_classes) > 1:
-            results = rank_by_total([row for row, _ in results])
+            results = rank_by_score([row for row, _ in results], metric)
         for row, place in results:
             if place > 3:
                 continue
-            athlete = row['athlete_id']
+            performance = (row['athlete_id'], place, Fraction(str(row[metric])))
             for period_key in ('all', str(row['year'])):
-                athletes = best[period_key, scope, gender, weight]
-                previous = athletes.get(athlete)
-                if (previous is None or place < previous[0]
-                        or (place == previous[0] and row['total'] > previous[1])):
-                    athletes[athlete] = (place, row['total'])
+                performances[period_key, scope, gender, weight].append(performance)
 
     years = sorted(years, reverse=True)
     periods = {key: {scope: {'M': {}, 'F': {}} for scope in (*PLACING_SCOPES.values(), 'combined')}
                for key in ('all', *years)}
-    for (period_key, scope, gender, weight), athletes in best.items():
+    for (period_key, scope, gender, weight), entries in performances.items():
         periods[period_key][scope][gender][weight] = [
-            placing_summary(athletes.values(), limit) for limit in (3, 2, 1)]
+            placing_summary(entries, limit) for limit in (3, 2, 1)]
     return {'years': years, 'classes': {g: sorted(values, key=class_sort) for g, values in classes.items()},
             'periods': periods}
 
@@ -248,8 +254,7 @@ def build_analytics(ranking, asset, archive_rows):
             'classes': classes, 'all': sample(rows, metrics),
             'years': {str(year): asset('samples', sample(group, metrics)) for year, group in by_year.items()},
             'national': national_records(rows, metrics),
-            'world': world_records(r for r in world if r['discipline'] == discipline)}
-        if discipline == 'SBD':
-            analytics['placingStats'] = placing_stats(archive_rows)
+            'world': world_records(r for r in world if r['discipline'] == discipline),
+            'placingStats': placing_stats(archive_rows, discipline)}
         index[discipline] = asset('analytics', analytics)
     return index
