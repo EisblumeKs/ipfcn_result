@@ -319,6 +319,8 @@ def pack(csv_path, metadata, output):
     updates_path = csv_path.with_suffix('.updates.json')
     changes = json.loads(updates_path.read_text(encoding='utf-8')) if updates_path.exists() else {}
     rows=load_rows(csv_path,metadata,changed_titles,changes)
+    attempts_path = csv_path.with_suffix('.attempts.json')
+    attempts = json.loads(attempts_path.read_text(encoding='utf-8')) if attempts_path.exists() else {}
     countries=metadata.get('athleteCountries',{})
     additional_profiles=set(metadata.get('additionalAthleteProfiles', ()))
     people=defaultdict(list)
@@ -363,7 +365,20 @@ def pack(csv_path, metadata, output):
         if not available:
             bucket['foreign'].append(key)
             continue
-        bucket['profiles'][key]={'file':asset('athlete',group),'ids':[r['record_id'] for r in group]}
+        profile_rows = []
+        for row in group:
+            loads = attempts.get(row['record_id'])
+            if loads is not None:
+                if (not isinstance(loads, list) or len(loads) != 9 or
+                        not any(load is not None for load in loads) or
+                        any(type(load) not in (int, float) or not math.isfinite(load) or load == 0
+                            for load in loads if load is not None) or
+                        row.get('status') == 'NS' or
+                        (row['discipline'] == 'B' and any(load is not None for load in loads[:3] + loads[6:]))):
+                    raise ValueError('Invalid attempts for ' + row['record_id'])
+                row = dict(row, attempts=loads)
+            profile_rows.append(row)
+        bucket['profiles'][key]={'file':asset('athlete',profile_rows),'ids':[r['record_id'] for r in group]}
         classes=sorted({r['weight_class'] for r in group if r['weight_class']},key=lambda c:(float(c.rstrip('+')),c.endswith('+')))
         representative = next((r for r in group if not r.get('status')), group[0])
         record={k:representative[k] for k in SEARCH_FIELDS}
